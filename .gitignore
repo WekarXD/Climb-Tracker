@@ -1,0 +1,13 @@
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+.kotlin/
+.superpowers/
+dist/
+# Segmentation models: fetched by the build from the models release.
+app/src/main/assets/*.onnx
+app/src/main/assets/*.part
+# Photos of real walls, for the detector tests and for training. Kept out of the repository.
+fotos-entrenamiento/
