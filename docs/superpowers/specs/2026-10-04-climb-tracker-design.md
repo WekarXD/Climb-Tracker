@@ -435,9 +435,17 @@ Además, los trozos de una presa se unen por su color real medido, no por el gru
 cada uno; dos tonos iguales con viveza muy distinta (una presa amarilla y la pared beige) no
 se unen.
 
+Dos presas del mismo color que se tocan forman una sola región. Se separan cuando la región
+son dos cuerpos unidos por un cuello mucho más estrecho que ambos (`Necks`): se va quitando
+grosor a la región y, si se parte cuando a los dos cuerpos aún les queda la mayor parte del
+suyo, cada píxel se asigna al cuerpo más cercano. Solo se aplica a presas con color, porque una
+presa gris y su sombra tienen esa misma forma. Con el cuello limitado al 30 % del cuerpo separa
+una de las doce detecciones que abarcaban varias presas sin partir ninguna presa entera; con el
+50 % separaba tres y partía dos.
+
 **Calidad medida.** Un test compara el detector con presas anotadas a mano en las tres fotos de
 referencia (`core/src/test/resources/holds`). Cifras vigentes, con las fotos recortadas para
-que no salga nadie: **106 de 119 presas encontradas (89 %)** y **26 detecciones falsas de 119**.
+que no salga nadie: **106 de 119 presas encontradas (89 %)** y **26 detecciones falsas de 121**.
 Por tipo, las de color y las negras se encuentran casi todas; las gris claro o blancas sobre
 pared clara son las que más se escapan.
 
@@ -462,8 +470,8 @@ y se libera después. En un móvil añade unos 2,7 s por pared de 40 presas. Los
 modelo no están en el repositorio: la compilación los descarga de la release `models-1`.
 
 La ejecución del modelo vive en `core` (`SilhouetteRunner`) y solo necesita el runtime, así que
-un test mide en el PC lo mismo que el de calidad del detector, después de las siluetas: 103 de
-119 presas y 25 detecciones falsas de 118. Son tres presas menos que el detector solo, donde un
+un test mide en el PC lo mismo que el de calidad del detector, después de las siluetas: 104 de
+119 presas y 25 detecciones falsas de 120. Son dos presas menos que el detector solo, donde un
 contorno que abarcaba dos presas se redibuja alrededor de una.
 
 ### Rocódromos

@@ -12,7 +12,7 @@ class SilhouetteQualityTest : DetectionQualityTest() {
 
     override val stage: String get() = "silhouettes"
 
-    // Measured: 103 of 119 holds and 25 false positives. Three holds fewer than the detector
+    // Measured: 104 of 119 holds and 25 false positives. Two holds fewer than the detector
     // alone, where an outline that took in two holds is redrawn around one of them.
     override val minTotalRecall: Float get() = 0.85f
     override val maxFalsePositives: Int get() = 27

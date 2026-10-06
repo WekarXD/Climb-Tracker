@@ -46,6 +46,12 @@ data class DetectorParams(
     val spreadColour: Boolean = true,
     /** How far from its vivid part a hold may take in duller pixels. */
     val spreadReach: Float = 12f,
+    /** Tell apart holds of the same colour that touch. */
+    val splitNecks: Boolean = true,
+    /** Thinnest a hold may be at its thickest to count as one of two that touch, in pixels. */
+    val neckRadius: Float = 2.5f,
+    /** Widest the join between two holds may be, as a share of the thinner of them. */
+    val neckWidth: Float = 0.3f,
     /** Look for holds of the colour of the wall by their outline. */
     val outlines: Boolean = true,
     /** Change in lightness across two pixels that makes an edge, in a 640 px image. */
@@ -140,7 +146,11 @@ class ColorHoldDetector(private val params: DetectorParams = DetectorParams()) :
             // Scaled with the thresholds so a faint hold found at high sensitivity is not
             // then mistaken for a continuation of the wall around it.
             if (Ring.continues(c, lab, params.ringDistance * factor, params.ringFraction, scale)) continue
-            holds += buildHold(c, lab, member, g)
+            // Two holds of one colour that touch come out as one region, joined by a neck. Not
+            // tried on what has no colour: a grey hold and its shadow look just the same.
+            val coloured = params.splitNecks && !Shading.isNeutral(clusters.centers[g])
+            val bodies = if (coloured) Necks.split(c, w, params.neckRadius * scale, params.neckWidth) else listOf(c)
+            for (body in bodies) holds += buildHold(body, lab, member, g)
             for (p in c.pixels) found[p] = true
         }
         val kept = Clutter.remove(holds, w, h, params.dropNested, params.dropRuns)
