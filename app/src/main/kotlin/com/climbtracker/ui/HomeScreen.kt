@@ -213,7 +213,8 @@ fun HomeScreen(
                 containerColor = Terracotta,
                 contentColor = Color.White,
                 shape = RoundedCornerShape(50),
-                icon = { Icon(Icons.Default.PhotoCamera, contentDescription = null) },
+                // The button takes its name for screen readers from the icon: its text is not read.
+                icon = { Icon(Icons.Default.PhotoCamera, contentDescription = stringResource(R.string.scan_route)) },
                 text = { Text(stringResource(R.string.scan_route), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium) },
             )
         },
