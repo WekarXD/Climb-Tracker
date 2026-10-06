@@ -16,8 +16,8 @@ android {
         applicationId = "com.climbtracker"
         minSdk = 26
         targetSdk = 37
-        versionCode = 41
-        versionName = "2.4.0-rc1"
+        versionCode = 42
+        versionName = "2.4.0"
 
         // -Ppruebas builds a copy that installs next to the real app, with its own data, to
         // try a change on a phone without touching the boulders kept in it.
