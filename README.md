@@ -32,7 +32,7 @@ Los datos de las capturas son de ejemplo.
 
 Descarga el APK de la [última release](https://github.com/WekarXD/Climb-Tracker/releases/latest) y ábrelo en un móvil con Android 8.0 o superior y procesador ARM de 64 bits, que son casi todos los vendidos desde 2017. En un móvil de 32 bits o en un emulador x86 no se instala. Hay que permitir la instalación de apps de origen desconocido.
 
-Los APK publicados son compilaciones de depuración (de ahí el `-debug` del nombre), firmadas siempre con la misma clave, así que cada versión se instala encima de la anterior y conserva los datos. Sirven para instalar la app directamente, no para una tienda.
+Los APK se firman siempre con la misma clave, así que cada versión se instala encima de la anterior y conserva los datos. Hasta la 2.3.0 eran compilaciones de depuración (de ahí el `-debug` del nombre); las siguientes son de release, más pequeñas y rápidas, y se instalan igualmente encima de aquellas.
 
 ## Cómo se usa
 
@@ -111,6 +111,10 @@ Generar el APK de depuración, que queda en `app/build/outputs/apk/debug/`:
 ./gradlew :app:assembleDebug
 ```
 
+`./gradlew :app:assembleRelease` genera el que se publica, reducido con R8. Compilado en local se firma con la clave de depuración de la máquina, así que no se instala encima de uno publicado.
+
+Pasar Android Lint: `./gradlew :app:lintDebug`.
+
 Los tests del detector sobre fotos reales dejan en `core/build/detection/` una imagen por foto con las presas contorneadas, útil para revisar a ojo cualquier cambio en la detección.
 
 ## Publicar una versión
@@ -120,11 +124,11 @@ Las versiones las compila y publica GitHub Actions:
 1. Sube `versionCode` y `versionName` en `app/build.gradle.kts` y confírmalo en `main`.
 2. Crea y empuja una etiqueta con ese mismo número, por ejemplo `git tag v2.0.0 && git push origin v2.0.0`. También vale crear la release desde GitHub con esa etiqueta.
 
-El flujo `Release` ejecuta los tests, compila el APK y lo adjunta a la release de esa etiqueta. Falla si la etiqueta no coincide con `versionName`.
+El flujo `Release` ejecuta los tests y lint, compila el APK de release y lo adjunta a la release de esa etiqueta. Falla si la etiqueta no coincide con `versionName`.
 
-Para que cada APK se instale encima del anterior, el flujo firma con un almacén de claves guardado en los secretos del repositorio: `SIGNING_KEYSTORE_BASE64` (el archivo en base64) y `SIGNING_STORE_PASSWORD`. Si el alias no es `climbtracker` o la clave tiene otra contraseña, se indican en `SIGNING_KEY_ALIAS` y `SIGNING_KEY_PASSWORD`. Sin ellos el APK se firma con una clave efímera y no actualiza instalaciones anteriores.
+Para que cada APK se instale encima del anterior, el flujo firma con un almacén de claves guardado en los secretos del repositorio: `SIGNING_KEYSTORE_BASE64` (el archivo en base64) y `SIGNING_STORE_PASSWORD`. Si el alias no es `climbtracker` o la clave tiene otra contraseña, se indican en `SIGNING_KEY_ALIAS` y `SIGNING_KEY_PASSWORD`. Sin el almacén de claves el flujo falla, porque un APK con otra firma no actualizaría instalaciones anteriores.
 
-El flujo `CI` ejecuta los mismos tests en cada cambio de `main` y en cada pull request.
+El flujo `CI` ejecuta los mismos tests y lint en cada cambio de `main` y en cada pull request. Dependabot propone cada mes las actualizaciones de bibliotecas y de acciones.
 
 ## Tecnología
 

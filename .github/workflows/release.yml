@@ -40,7 +40,8 @@ jobs:
             echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/signing.keystore"
             echo "SIGNING_KEYSTORE_FILE=$RUNNER_TEMP/signing.keystore" >> "$GITHUB_ENV"
           else
-            echo "::warning::Falta el secreto SIGNING_KEYSTORE_BASE64. El APK se firma con una clave de depuración efímera y no se instalará encima de versiones anteriores."
+            echo "::error::Falta el secreto SIGNING_KEYSTORE_BASE64. Sin él el APK no se instalaría encima de versiones anteriores."
+            exit 1
           fi
 
       - name: Tests y APK
@@ -48,14 +49,14 @@ jobs:
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
-        run: ./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug
+        run: ./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleRelease
 
       - name: Publicar el APK en la release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          apk="ClimbTracker-${VERSION}-debug.apk"
-          cp app/build/outputs/apk/debug/app-debug.apk "$apk"
+          apk="ClimbTracker-${VERSION}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$apk"
           if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
             # Un APK ya publicado no se sustituye nunca: quien lo descargó debe poder fiarse de él.
             if gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name' | grep -qx "$apk"; then
