@@ -113,7 +113,7 @@ dependencies {
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.30.0")
 
     // OpenStreetMap map view, for finding gyms.
-    implementation("org.osmdroid:osmdroid-android:6.1.20")
+    implementation("org.maplibre.gl:android-sdk:13.6.1")
 
     implementation("androidx.room:room-runtime:2.8.5")
     implementation("androidx.room:room-ktx:2.8.5")
