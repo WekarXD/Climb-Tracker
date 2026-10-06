@@ -204,6 +204,39 @@ class ClimbRepositoryTest {
     )
 
     @Test
+    fun splittingAHoldGivesItsCircuitsBothPartsAndMovesTheirAttempts() = runTest {
+        val wallId = repo.createWall("a.jpg", 640, 480, DetectionResult(listOf(holdAt(0.9f), holdAt(0.5f), holdAt(0.1f)), emptyList()))
+        val holds = repo.holds(wallId)
+        val id = repo.saveBoulder(
+            null, wallId, "Amarillo", "6A",
+            mapOf(
+                holds[0].id to SelectedHold(HoldRole.START, 0),
+                holds[1].id to SelectedHold(HoldRole.NORMAL, 1),
+                holds[2].id to SelectedHold(HoldRole.TOP, 2),
+            ),
+        )
+        repo.addAttempt(id, AttemptResult.FAIL, holds[1].id)
+        repo.addAttempt(id, AttemptResult.SEND, holds[2].id)
+        val above = listOf(PointF(0.4f, 0.1f), PointF(0.6f, 0.1f), PointF(0.5f, 0.2f))
+        val below = listOf(PointF(0.4f, 0.3f), PointF(0.6f, 0.3f), PointF(0.5f, 0.4f))
+
+        val (topUpper, topLower) = repo.splitHold(holds[2].id, above, below)!!
+        val (midUpper, midLower) = repo.splitHold(holds[1].id, above, below)!!
+
+        assertEquals(setOf(holds[0].id, topUpper.id, topLower.id, midUpper.id, midLower.id), repo.holds(wallId).map { it.id }.toSet())
+        val selection = repo.selection(id)
+        assertEquals(HoldRole.TOP, selection.getValue(topUpper.id).role)
+        assertEquals(HoldRole.NORMAL, selection.getValue(topLower.id).role)
+        assertEquals(HoldRole.NORMAL, selection.getValue(midUpper.id).role)
+        assertEquals(HoldRole.START, selection.getValue(holds[0].id).role)
+        assertEquals(5, selection.size)
+        // The send stays on the top; the attempt that ended on the other hold is not counted higher than it got.
+        assertEquals(listOf(midLower.id, topUpper.id), repo.attempts(id).first().map { it.lastHoldId })
+        assertEquals(above, repo.holds(wallId).first { it.id == topUpper.id }.contour)
+        assertNull(repo.splitHold(holds[2].id, above, below))
+    }
+
+    @Test
     fun attemptRemembersLastHoldAndSummaryShowsBestProgress() = runTest {
         val wallId = repo.createWall("a.jpg", 640, 480, DetectionResult(listOf(holdAt(0.9f), holdAt(0.5f), holdAt(0.1f)), emptyList()))
         val holds = repo.holds(wallId)
