@@ -188,7 +188,7 @@ class ClimbRepository(
     fun summaries(): Flow<List<BoulderSummary>> = combine(
         dao.boulders(),
         dao.walls(),
-        dao.allHolds(),
+        dao.circuitHolds(),
         dao.allBoulderHolds(),
         dao.allAttempts(),
     ) { boulders, walls, holds, links, attempts ->

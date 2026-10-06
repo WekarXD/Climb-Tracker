@@ -65,7 +65,7 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
     private val climb = app as ClimbApp
 
     /** Every boulder, taken-down ones included, in the shape the statistics need. */
-    val records: StateFlow<List<Pair<Long?, BoulderRecord>>> = climb.repository.summaries()
+    val records: StateFlow<List<Pair<Long?, BoulderRecord>>> = climb.summaries
         .map { summaries ->
             val zone = ZoneId.systemDefault()
             fun day(millis: Long): LocalDate = Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()

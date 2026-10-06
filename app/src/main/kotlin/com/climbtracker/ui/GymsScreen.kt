@@ -76,7 +76,7 @@ import kotlin.math.roundToInt
 class GymsViewModel(app: Application) : AndroidViewModel(app) {
     private val climb = app as ClimbApp
     val gyms = climb.repository.gyms().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val boulders = climb.repository.summaries().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val boulders = climb.summaries.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     var message by mutableStateOf<String?>(null)
 

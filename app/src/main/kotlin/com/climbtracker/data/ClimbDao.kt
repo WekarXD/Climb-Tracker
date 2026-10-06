@@ -65,8 +65,9 @@ abstract class ClimbDao {
     @Query("SELECT * FROM holds WHERE wallId = :wallId ORDER BY id")
     abstract suspend fun holds(wallId: Long): List<HoldEntity>
 
-    @Query("SELECT * FROM holds")
-    abstract fun allHolds(): Flow<List<HoldEntity>>
+    /** The holds some boulder uses: a small part of those of a wall, and all that a list of boulders needs. */
+    @Query("SELECT * FROM holds WHERE id IN (SELECT holdId FROM boulder_holds)")
+    abstract fun circuitHolds(): Flow<List<HoldEntity>>
 
     @Query("DELETE FROM holds WHERE wallId = :wallId")
     abstract suspend fun deleteHolds(wallId: Long)

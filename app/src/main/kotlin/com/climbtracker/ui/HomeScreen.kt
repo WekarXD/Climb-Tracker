@@ -81,7 +81,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val climb = app as ClimbApp
 
     val all: StateFlow<List<BoulderSummary>> =
-        climb.repository.summaries().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        climb.summaries.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Null shows every status. */
     val status = MutableStateFlow<BoulderStatus?>(null)
