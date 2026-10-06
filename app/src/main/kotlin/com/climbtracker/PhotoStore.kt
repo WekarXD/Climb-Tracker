@@ -9,7 +9,7 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
 import com.climbtracker.core.detection.PixelImage
-import com.climbtracker.core.image.CropRect
+import com.climbtracker.core.image.CropQuad
 import com.climbtracker.core.image.ImageMath
 import java.io.File
 import java.util.UUID
@@ -59,19 +59,31 @@ class PhotoStore(private val context: Context) {
 
     fun imported(maxSide: Int): Bitmap? = load(importFile.path, maxSide)
 
-    /** Crops the working photo and stores the result as a wall photo. Returns its path. */
-    fun cropAndSave(crop: CropRect): String? = try {
+    /**
+     * Keeps the part of the working photo inside [crop], straightened if its corners are not
+     * square, and stores it as a wall photo. Returns its path.
+     */
+    fun cropAndSave(crop: CropQuad): String? = try {
         val source = BitmapFactory.decodeFile(importFile.path)
         if (source == null) {
             null
         } else {
-            val c = crop.normalized()
-            val x = (c.left * source.width).toInt().coerceIn(0, source.width - 1)
-            val y = (c.top * source.height).toInt().coerceIn(0, source.height - 1)
-            val w = ((c.right - c.left) * source.width).toInt().coerceIn(1, source.width - x)
-            val h = ((c.bottom - c.top) * source.height).toInt().coerceIn(1, source.height - y)
+            val rect = crop.asRect()
+            val picture = if (rect != null) {
+                val c = rect.normalized()
+                val x = (c.left * source.width).toInt().coerceIn(0, source.width - 1)
+                val y = (c.top * source.height).toInt().coerceIn(0, source.height - 1)
+                val w = ((c.right - c.left) * source.width).toInt().coerceIn(1, source.width - x)
+                val h = ((c.bottom - c.top) * source.height).toInt().coerceIn(1, source.height - y)
+                Bitmap.createBitmap(source, x, y, w, h)
+            } else {
+                val argb = IntArray(source.width * source.height)
+                source.getPixels(argb, 0, source.width, 0, 0, source.width, source.height)
+                val straight = crop.straighten(PixelImage(source.width, source.height, argb))
+                Bitmap.createBitmap(straight.argb, straight.width, straight.height, Bitmap.Config.ARGB_8888)
+            }
             val file = File(walls, "${UUID.randomUUID()}.jpg")
-            save(Bitmap.createBitmap(source, x, y, w, h), file)
+            save(picture, file)
             file.path
         }
     } catch (e: Exception) {

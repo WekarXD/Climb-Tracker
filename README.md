@@ -37,7 +37,7 @@ Los APK se firman siempre con la misma clave, así que cada versión se instala 
 ## Cómo se usa
 
 1. **Escanear ruta** → haz una foto o elige una de la galería.
-2. **Encuadra la pared** arrastrando las esquinas para dejar fuera suelo y techo, y pulsa **Detectar**.
+2. **Encuadra la pared** arrastrando las esquinas para dejar fuera suelo y techo, y pulsa **Detectar**. Si la foto está hecha de lado o desde abajo, activa **Perspectiva** y lleva cada esquina a una esquina de la pared: la foto se endereza antes de detectar.
 3. En el editor, toca el color de tu bloque. Corrige con pulsaciones largas y marca **Inicio**, **Top** y **Pies** con las herramientas de abajo.
 4. **Guardar** con nombre y grado.
 5. En el bloque, pulsa **+ intento** y toca la última presa que alcanzaste.
@@ -62,7 +62,7 @@ Las presas y sus colores se encuentran con visión clásica por color; un modelo
 
 - Las presas del color de la pared (gris claro o blancas sobre pared clara) se detectan por su sombra, con un contorno aproximado que a veces abarca una presa vecina. Si alguna no sale, se añade con pulsación larga.
 - Rejillas, personas, pegatinas y algún borde de panel pueden salir marcados como presa.
-- Las fotos con perspectiva muy forzada empeoran el resultado.
+- Las fotos con perspectiva muy forzada empeoran el resultado, aunque se enderecen al encuadrar: las presas lejanas quedan con menos detalle.
 - Los umbrales están ajustados con fotos de un solo rocódromo. El control de sensibilidad del editor permite corregirlo en otras condiciones de luz.
 
 ## Privacidad

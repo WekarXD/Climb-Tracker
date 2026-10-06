@@ -489,6 +489,13 @@ solo nombres completos) y a Photon (encuentra parte del nombre, pero puede tarda
 o se usa como posición de uno existente. Es lo único de la app que usa Internet: el mapa y las
 búsquedas envían a esos servicios la zona o el texto consultados, nada más.
 
+### Encuadre con perspectiva
+
+El paso de recorte tiene un modo «Perspectiva» en el que cada esquina se mueve por separado
+(`core/image/CropQuad.kt`). La zona marcada se endereza con una transformación proyectiva antes
+de guardar la foto y detectar, de modo que una pared fotografiada de lado o desde abajo queda
+como vista de frente. Con el modo apagado el recorte es el rectángulo de siempre.
+
 ### Publicación
 
 Icono adaptativo propio. Las versiones se compilan y publican con GitHub Actions al empujar una

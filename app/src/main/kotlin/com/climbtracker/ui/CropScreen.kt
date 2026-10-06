@@ -30,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathFillType
@@ -45,7 +44,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.climbtracker.ClimbApp
 import com.climbtracker.core.image.CropHandle
-import com.climbtracker.core.image.CropRect
+import com.climbtracker.core.image.CropQuad
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
@@ -72,7 +71,7 @@ class CropViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Crops the photo, detects its holds and stores the wall. [onDone] receives the wall id. */
-    fun confirm(crop: CropRect, onDone: (Long) -> Unit) {
+    fun confirm(crop: CropQuad, onDone: (Long) -> Unit) {
         if (busy) return
         viewModelScope.launch {
             busy = true
@@ -107,7 +106,10 @@ class CropViewModel(app: Application) : AndroidViewModel(app) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CropScreen(onDone: (Long) -> Unit, onBack: () -> Unit, vm: CropViewModel = viewModel()) {
-    var crop by remember { mutableStateOf(CropRect.FULL) }
+    var crop by remember { mutableStateOf(CropQuad.FULL) }
+    // Off, the corners stay square and the photo is only cropped. On, each corner moves alone,
+    // to mark a wall photographed from one side or from below, which is then straightened.
+    var perspective by remember { mutableStateOf(false) }
     val bitmap = vm.bitmap
 
     Scaffold(
@@ -120,6 +122,15 @@ fun CropScreen(onDone: (Long) -> Unit, onBack: () -> Unit, vm: CropViewModel = v
                     }
                 },
                 actions = {
+                    TextButton(
+                        onClick = {
+                            perspective = !perspective
+                            if (!perspective) crop = CropQuad.of(crop.bounds().normalized())
+                        },
+                        enabled = !vm.busy && bitmap != null,
+                    ) {
+                        Text(if (perspective) "✓ Perspectiva" else "Perspectiva")
+                    }
                     TextButton(onClick = { vm.confirm(crop, onDone) }, enabled = !vm.busy && bitmap != null) {
                         Text("Detectar")
                     }
@@ -131,7 +142,15 @@ fun CropScreen(onDone: (Long) -> Unit, onBack: () -> Unit, vm: CropViewModel = v
             Modifier.padding(padding).fillMaxSize().background(Color.Black),
             contentAlignment = Alignment.Center,
         ) {
-            if (bitmap != null) CropCanvas(bitmap, crop, onChange = { crop = it })
+            if (bitmap != null) CropCanvas(bitmap, crop, perspective, onChange = { crop = it })
+            if (perspective && !vm.busy) {
+                Text(
+                    "Lleva cada esquina a una esquina de la pared.",
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp),
+                )
+            }
             if (vm.busy) Spinner()
             vm.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(24.dp)) }
         }
@@ -139,9 +158,10 @@ fun CropScreen(onDone: (Long) -> Unit, onBack: () -> Unit, vm: CropViewModel = v
 }
 
 @Composable
-private fun CropCanvas(bitmap: Bitmap, crop: CropRect, onChange: (CropRect) -> Unit) {
+private fun CropCanvas(bitmap: Bitmap, crop: CropQuad, perspective: Boolean, onChange: (CropQuad) -> Unit) {
     val image = remember(bitmap) { bitmap.asImageBitmap() }
     val current by rememberUpdatedState(crop)
+    val free by rememberUpdatedState(perspective)
     val reach = with(LocalDensity.current) { 40.dp.toPx() }
     val line = with(LocalDensity.current) { 2.dp.toPx() }
 
@@ -165,7 +185,13 @@ private fun CropCanvas(bitmap: Bitmap, crop: CropRect, onChange: (CropRect) -> U
                     onDrag = { change, drag ->
                         change.consume()
                         grab?.let { handle ->
-                            working = working.dragged(handle, drag.x / size.width, drag.y / size.height)
+                            val dx = drag.x / size.width
+                            val dy = drag.y / size.height
+                            working = if (free) {
+                                working.dragged(handle, dx, dy)
+                            } else {
+                                CropQuad.of((working.asRect() ?: working.bounds()).dragged(handle, dx, dy))
+                            }
                             onChange(working)
                         }
                     },
@@ -173,33 +199,34 @@ private fun CropCanvas(bitmap: Bitmap, crop: CropRect, onChange: (CropRect) -> U
             },
     ) {
         drawImage(image, dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()))
-        val rect = Rect(
-            crop.left * size.width, crop.top * size.height,
-            crop.right * size.width, crop.bottom * size.height,
-        )
+        val corners = crop.corners.map { Offset(it.x * size.width, it.y * size.height) }
+        val shape = Path().apply {
+            moveTo(corners[0].x, corners[0].y)
+            for (corner in corners.drop(1)) lineTo(corner.x, corner.y)
+            close()
+        }
         val outside = Path().apply {
             fillType = PathFillType.EvenOdd
             addRect(Rect(Offset.Zero, size))
-            addRect(rect)
+            addPath(shape)
         }
         drawPath(outside, Color.Black.copy(alpha = 0.6f))
-        drawRect(Color.White, rect.topLeft, Size(rect.width, rect.height), style = Stroke(line))
-        for (corner in listOf(rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight)) {
-            drawCircle(Color.White, radius = line * 5f, center = corner)
-        }
+        drawPath(shape, Color.White, style = Stroke(line))
+        for (corner in corners) drawCircle(Color.White, radius = line * 5f, center = corner)
     }
 }
 
-/** The corner within [reach] pixels of [point], else MOVE when inside the rectangle, else null. */
-private fun grabAt(crop: CropRect, point: Offset, width: Float, height: Float, reach: Float): CropHandle? {
-    val corners = listOf(
-        CropHandle.TOP_LEFT to Offset(crop.left * width, crop.top * height),
-        CropHandle.TOP_RIGHT to Offset(crop.right * width, crop.top * height),
-        CropHandle.BOTTOM_LEFT to Offset(crop.left * width, crop.bottom * height),
-        CropHandle.BOTTOM_RIGHT to Offset(crop.right * width, crop.bottom * height),
-    )
-    val nearest = corners.minBy { hypot(it.second.x - point.x, it.second.y - point.y) }
-    if (hypot(nearest.second.x - point.x, nearest.second.y - point.y) <= reach) return nearest.first
-    val inside = point.x in crop.left * width..crop.right * width && point.y in crop.top * height..crop.bottom * height
+/** The corner within [reach] pixels of [point], else MOVE when inside the shape, else null. */
+private fun grabAt(crop: CropQuad, point: Offset, width: Float, height: Float, reach: Float): CropHandle? {
+    val handles = listOf(CropHandle.TOP_LEFT, CropHandle.TOP_RIGHT, CropHandle.BOTTOM_RIGHT, CropHandle.BOTTOM_LEFT)
+    val corners = crop.corners.map { Offset(it.x * width, it.y * height) }
+    val nearest = corners.indices.minBy { hypot(corners[it].x - point.x, corners[it].y - point.y) }
+    if (hypot(corners[nearest].x - point.x, corners[nearest].y - point.y) <= reach) return handles[nearest]
+    // Inside a shape that bulges outwards, the point is on the same side of all four edges.
+    val inside = corners.indices.all { i ->
+        val a = corners[i]
+        val b = corners[(i + 1) % 4]
+        (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x) >= 0f
+    }
     return if (inside) CropHandle.MOVE else null
 }
