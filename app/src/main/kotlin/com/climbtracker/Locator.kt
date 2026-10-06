@@ -6,10 +6,10 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
-import android.os.Build
 import android.os.CancellationSignal
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
+import androidx.core.location.LocationManagerCompat
 import com.climbtracker.core.tracker.GeoPoint
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
@@ -35,12 +35,13 @@ class Locator(private val context: Context) {
             known.filter { ageMillis(it) < FRESH_MILLIS }.minByOrNull { it.accuracy }?.let { return it.toFix() }
 
             val provider = PREFERRED.firstOrNull { it in providers }
-            val fresh = if (provider != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // The compat call also asks for a new fix on Android 8 to 10, which lack getCurrentLocation.
+            val fresh = if (provider != null) {
                 withTimeoutOrNull(timeoutMillis) {
                     suspendCancellableCoroutine<Location?> { continuation ->
                         val signal = CancellationSignal()
                         continuation.invokeOnCancellation { signal.cancel() }
-                        manager.getCurrentLocation(provider, signal, context.mainExecutor) { location ->
+                        LocationManagerCompat.getCurrentLocation(manager, provider, signal, ContextCompat.getMainExecutor(context)) { location ->
                             if (continuation.isActive) continuation.resume(location)
                         }
                     }
