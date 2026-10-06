@@ -115,7 +115,7 @@ Generar el APK de depuración, que queda en `app/build/outputs/apk/debug/`:
 
 Pasar Android Lint: `./gradlew :app:lintDebug`.
 
-Los tests del detector sobre fotos reales dejan en `core/build/detection/` una imagen por foto con las presas contorneadas, útil para revisar a ojo cualquier cambio en la detección.
+Los tests del detector sobre fotos reales dejan en `core/build/detection/` una imagen por foto con las presas contorneadas, útil para revisar a ojo cualquier cambio en la detección. Los de calidad comparan con presas anotadas a mano, antes y después del modelo de segmentación, que se ejecuta también en el PC; sus imágenes quedan en `core/build/quality/`.
 
 ## Publicar una versión
 

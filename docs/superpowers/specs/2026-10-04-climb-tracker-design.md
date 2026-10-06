@@ -461,6 +461,11 @@ este no puede ejecutarse, quedan los contornos del detector. El modelo se carga 
 y se libera después. En un móvil añade unos 2,7 s por pared de 40 presas. Los dos archivos del
 modelo no están en el repositorio: la compilación los descarga de la release `models-1`.
 
+La ejecución del modelo vive en `core` (`SilhouetteRunner`) y solo necesita el runtime, así que
+un test mide en el PC lo mismo que el de calidad del detector, después de las siluetas: 103 de
+119 presas y 25 detecciones falsas de 118. Son tres presas menos que el detector solo, donde un
+contorno que abarcaba dos presas se redibuja alrededor de una.
+
 ### Rocódromos
 
 Tabla `gyms` (nombre) y columna opcional `gymId` en `walls`; borrar un rocódromo deja sus paredes
