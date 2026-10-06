@@ -19,10 +19,13 @@ class PhotoStore(private val context: Context) {
     private val walls = File(context.filesDir, "walls")
     private val importFile = File(context.cacheDir, "import.jpg")
 
+    /** Named after the app, so a test copy installed next to it has its own. */
+    private val authority = "${context.packageName}.files"
+
     /** Fixed destination for the camera app, so the capture survives the activity being recreated. */
     fun cameraUri(): Uri {
         val dir = File(context.cacheDir, "camera").apply { mkdirs() }
-        return FileProvider.getUriForFile(context, AUTHORITY, File(dir, "capture.jpg"))
+        return FileProvider.getUriForFile(context, authority, File(dir, "capture.jpg"))
     }
 
     /** Decodes [uri] subsampled, applies its EXIF rotation and stores it as the working photo. */
@@ -119,7 +122,7 @@ class PhotoStore(private val context: Context) {
     fun shareUri(bitmap: Bitmap): Uri {
         val file = File(File(context.cacheDir, "share"), "climb-tracker.jpg")
         save(bitmap, file)
-        return FileProvider.getUriForFile(context, AUTHORITY, file)
+        return FileProvider.getUriForFile(context, authority, file)
     }
 
     fun delete(path: String) {
@@ -132,7 +135,6 @@ class PhotoStore(private val context: Context) {
     }
 
     companion object {
-        const val AUTHORITY = "com.climbtracker.files"
         const val MAX_SIDE = 2048
         const val DETECTION_SIDE = 1280
         private const val TAG = "PhotoStore"

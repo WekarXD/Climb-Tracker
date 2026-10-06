@@ -19,6 +19,12 @@ android {
         versionCode = 40
         versionName = "2.3.0"
 
+        // -Ppruebas builds a copy that installs next to the real app, with its own data, to
+        // try a change on a phone without touching the boulders kept in it.
+        val trial = project.hasProperty("pruebas")
+        if (trial) applicationIdSuffix = ".pruebas"
+        manifestPlaceholders["appLabel"] = if (trial) "Climb Tracker (pruebas)" else "Climb Tracker"
+
         // The segmentation runtime ships native code; phones are 64-bit ARM.
         ndk {
             abiFilters += "arm64-v8a"

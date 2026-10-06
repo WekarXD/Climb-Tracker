@@ -28,7 +28,7 @@ Los datos de las capturas son de ejemplo.
 - **Compartir** un bloque como imagen vertical: la foto con el circuito, el resultado en grande, el rocódromo, la fecha y los intentos. Se puede cambiar la foto por una tuya y elegir la alineación del texto.
 - **Copia de seguridad**: exporta todos los datos y fotos a un archivo y restáuralos en otro móvil.
 
-La app está en español y en inglés, según el idioma del móvil, y sigue su tema claro u oscuro.
+La app está en español y en inglés, y sigue el tema claro u oscuro del móvil. Usa el primer idioma del móvil en el que esté traducida; se puede fijar otro en los ajustes del sistema, en «Idioma de la app» (Android 13 o superior).
 
 ## Instalación
 
@@ -116,6 +116,12 @@ Generar el APK de depuración, que queda en `app/build/outputs/apk/debug/`:
 `./gradlew :app:assembleRelease` genera el que se publica, reducido con R8. Compilado en local se firma con la clave de depuración de la máquina, así que no se instala encima de uno publicado.
 
 Pasar Android Lint: `./gradlew :app:lintDebug`.
+
+Para probar un cambio en un móvil sin tocar los bloques que tiene guardados, `-Ppruebas` compila una copia que se instala junto a la app, con sus propios datos y el nombre «Climb Tracker (pruebas)»:
+
+```bash
+./gradlew :app:assembleRelease -Ppruebas
+```
 
 Los tests del detector sobre fotos reales dejan en `core/build/detection/` una imagen por foto con las presas contorneadas, útil para revisar a ojo cualquier cambio en la detección. Los de calidad comparan con presas anotadas a mano, antes y después del modelo de segmentación, que se ejecuta también en el PC; sus imágenes quedan en `core/build/quality/`.
 

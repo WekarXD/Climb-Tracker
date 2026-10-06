@@ -6,6 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -124,15 +125,6 @@ fun CropScreen(onDone: (Long) -> Unit, onBack: () -> Unit, vm: CropViewModel = v
                     }
                 },
                 actions = {
-                    TextButton(
-                        onClick = {
-                            perspective = !perspective
-                            if (!perspective) crop = CropQuad.of(crop.bounds().normalized())
-                        },
-                        enabled = !vm.busy && bitmap != null,
-                    ) {
-                        Text(ticked(stringResource(R.string.perspective), perspective))
-                    }
                     TextButton(onClick = { vm.confirm(crop, onDone) }, enabled = !vm.busy && bitmap != null) {
                         Text(stringResource(R.string.detect))
                     }
@@ -145,13 +137,28 @@ fun CropScreen(onDone: (Long) -> Unit, onBack: () -> Unit, vm: CropViewModel = v
             contentAlignment = Alignment.Center,
         ) {
             if (bitmap != null) CropCanvas(bitmap, crop, perspective, onChange = { crop = it })
-            if (perspective && !vm.busy) {
-                Text(
-                    stringResource(R.string.perspective_hint),
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp),
-                )
+            if (bitmap != null && !vm.busy) {
+                // Under the photo, where there is room: in the bar it pushed the title onto two lines.
+                Column(
+                    Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    if (perspective) {
+                        Text(
+                            stringResource(R.string.perspective_hint),
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(bottom = 6.dp),
+                        )
+                    }
+                    Pill(
+                        selected = perspective,
+                        onClick = {
+                            perspective = !perspective
+                            if (!perspective) crop = CropQuad.of(crop.bounds().normalized())
+                        },
+                    ) { Text(stringResource(R.string.perspective), style = MaterialTheme.typography.titleSmall) }
+                }
             }
             if (vm.busy) Spinner()
             vm.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(24.dp)) }
@@ -169,7 +176,7 @@ private fun CropCanvas(bitmap: Bitmap, crop: CropQuad, perspective: Boolean, onC
 
     Canvas(
         Modifier
-            .padding(28.dp)
+            .padding(start = 28.dp, top = 28.dp, end = 28.dp, bottom = 84.dp)
             .aspectRatio(bitmap.width.toFloat() / bitmap.height)
             // The corner handles sit near the screen edge, where a drag would otherwise be
             // taken by the system back gesture.
