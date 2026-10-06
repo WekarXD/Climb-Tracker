@@ -50,6 +50,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import com.climbtracker.R
 
 class NewWallViewModel(app: Application) : AndroidViewModel(app) {
     private val climb = app as ClimbApp
@@ -74,12 +77,12 @@ class NewWallViewModel(app: Application) : AndroidViewModel(app) {
             error = null
             val ok = withContext(Dispatchers.IO) { climb.photos.import(uri) }
             busy = false
-            if (ok) onReady() else error = "No se ha podido leer la foto."
+            if (ok) onReady() else error = climb.getString(R.string.photo_unreadable)
         }
     }
 
     fun reportNoCamera() {
-        error = "Este dispositivo no tiene ninguna app de cámara. Elige la foto de la galería."
+        error = climb.getString(R.string.no_camera)
     }
 
     fun askDelete(wall: WallEntity) {
@@ -119,10 +122,10 @@ fun NewWallScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Nueva pared") },
+                title = { Text(stringResource(R.string.new_wall)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
             )
@@ -144,7 +147,7 @@ fun NewWallScreen(
                         },
                         enabled = !vm.busy,
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Hacer foto") }
+                    ) { Text(stringResource(R.string.take_photo)) }
                 }
                 item {
                     OutlinedButton(
@@ -153,13 +156,13 @@ fun NewWallScreen(
                         },
                         enabled = !vm.busy,
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Elegir de la galería") }
+                    ) { Text(stringResource(R.string.pick_gallery)) }
                 }
                 vm.error?.let { message ->
                     item { Text(message, color = MaterialTheme.colorScheme.error) }
                 }
                 if (walls.isNotEmpty()) {
-                    item { Text("Paredes guardadas", style = MaterialTheme.typography.titleMedium) }
+                    item { Text(stringResource(R.string.saved_walls), style = MaterialTheme.typography.titleMedium) }
                     items(walls, key = { it.id }) { wall ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             WallPreview(
@@ -168,7 +171,7 @@ fun NewWallScreen(
                                 maxSide = 512,
                             )
                             IconButton(onClick = { vm.askDelete(wall) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Borrar pared")
+                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_wall))
                             }
                         }
                     }
@@ -181,18 +184,14 @@ fun NewWallScreen(
     vm.pendingDelete?.let { (_, count) ->
         AlertDialog(
             onDismissRequest = vm::cancelDelete,
-            title = { Text("Borrar pared") },
+            title = { Text(stringResource(R.string.delete_wall)) },
             text = {
                 Text(
-                    when (count) {
-                        0 -> "Se borrará la pared y su foto."
-                        1 -> "Se borrará la pared, su foto y 1 bloque con sus intentos."
-                        else -> "Se borrará la pared, su foto y $count bloques con sus intentos."
-                    },
+                    if (count == 0) stringResource(R.string.delete_wall_alone) else pluralStringResource(R.plurals.delete_wall_boulders, count, count),
                 )
             },
-            confirmButton = { TextButton(onClick = vm::confirmDelete) { Text("Borrar") } },
-            dismissButton = { TextButton(onClick = vm::cancelDelete) { Text("Cancelar") } },
+            confirmButton = { TextButton(onClick = vm::confirmDelete) { Text(stringResource(R.string.delete)) } },
+            dismissButton = { TextButton(onClick = vm::cancelDelete) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }

@@ -301,7 +301,7 @@ Sin interfaz ni dependencias de Android.
   imágenes sintéticas con formas de colores sobre fondo uniforme y con ruido,
   comprobando número de presas, posición, color y agrupación; casos límite
   (imagen sin presas, todo primer plano, presas en el borde). Además,
-  tests de rango sobre las cuatro fotos reales de `fotos-referencia/`: el
+  tests de rango sobre las tres fotos reales de `fotos-referencia/`: el
   número de presas debe caer en un intervalo alrededor del obtenido con el
   prototipo (sección 11).
 - **`editor`** (tests unitarios en JVM): cada acción, las reglas de roles,
@@ -343,12 +343,12 @@ secciones anteriores cuando haya contradicción.
 
 ### Aspecto
 
-- Tema claro fijo (fondo crema, tarjetas blancas, acento terracota); la app no sigue el modo
-  oscuro del sistema.
+- Tema cálido (fondo crema, tarjetas blancas, acento terracota) con variante oscura, que sigue
+  el modo del sistema. El editor, el recorte y las tarjetas que se comparten son iguales en ambos.
 - **Inicio**: rejilla de dos columnas con tarjetas de foto, agrupadas por día ("Sesión del
   5 de octubre"). Filtros por estado ("En progreso", "Encadenado", "Flash"), chips por color y
   un filtro "Desmontados".
-- Barra inferior con dos pestañas: Proyectos y Perfil.
+- Barra inferior con tres pestañas: Proyectos, Rocódromos y Perfil.
 - El inicio y el top se señalan con etiquetas "START" y "TOP" junto a la presa, no con
   contornos de color y letras.
 
@@ -412,21 +412,17 @@ fusión de regiones contiguas del mismo material. Además:
   frente a los 14 de una sin color. Los pies diminutos solo miden unos píxeles, y lo que los
   distingue del ruido (agujeros de tornillo, motas) es que tienen color.
 
-La calidad se mide con un test contra presas anotadas a mano en las tres fotos de referencia
-(`core/src/test/resources/holds`): 106 de 119 presas encontradas (89 %) y 26 detecciones falsas
-de 119. Las fotos están recortadas para que no salga nadie; antes del recorte eran 116 de 129
-y 19 de 124, y las cifras de este apartado anteriores a ese cambio se refieren a las fotos enteras. Un último paso descarta lo que no es presa por su entorno: las motas sin color propio
-dentro de una presa mayor (tornillos, brillos) y las filas de formas sin color parecidas,
-juntas y en línea recta (letras pintadas en un panel, rejillas).
+Un último paso descarta lo que no es presa por su entorno: las motas sin color propio dentro
+de una presa mayor (tornillos, brillos) y las filas de formas sin color parecidas, juntas y en
+línea recta (letras pintadas en un panel, rejillas).
 
-Una segunda pasada busca las presas del color de la pared, que la pasada por color no ve
-(antes se encontraban 11 de 17; ahora 15). Lo que las delata es el relieve: la cara inferior
-en sombra y la sombra que proyectan dibujan casi todo su contorno. Se calculan los bordes de
-la luminosidad suavizada, se quitan los de las presas ya encontradas y los anillos diminutos de
-los agujeros de tornillo, y los bordes restantes se agrupan por cercanía. Un grupo con el
-tamaño y la forma de una presa (ni una línea, ni una rejilla llena de bordes) se da por presa,
-con su envolvente convexa como contorno, y absorbe las sombras sueltas que hubiera dentro. Solo
-se aplica sobre pared clara.
+Una segunda pasada busca las presas del color de la pared, que la pasada por color no ve. Lo
+que las delata es el relieve: la cara inferior en sombra y la sombra que proyectan dibujan casi
+todo su contorno. Se calculan los bordes de la luminosidad suavizada, se quitan los de las
+presas ya encontradas y los anillos diminutos de los agujeros de tornillo, y los bordes
+restantes se agrupan por cercanía. Un grupo con el tamaño y la forma de una presa (ni una
+línea, ni una rejilla llena de bordes) se da por presa, con su envolvente convexa como
+contorno, y absorbe las sombras sueltas que hubiera dentro. Solo se aplica sobre pared clara.
 
 Las presas de un color sin grupo propio, o apagadas por la sombra o el magnesio (las ocre
 montadas sobre volúmenes oscuros), quedaban reducidas a su mota más viva. Ahora un grupo de
@@ -434,10 +430,34 @@ color absorbe los píxeles vecinos sin color de su mismo tono, a poca distancia 
 viva: sobre algo oscuro (un volumen, sombra) basta con muy poco color; entre cosas claras, que
 suelen estar teñidas como la pared beige, hace falta claramente más color que la pared de
 alrededor. Antes de eso, un píxel con color definido pasa al grupo de su tono aunque le quede
-más cerca uno gris: hay presas en sombra de las que ningún píxel cae en su propio color. Además, y los trozos de una presa se unen por su color real medido, no por el grupo al que
-cayó cada uno; dos tonos iguales con viveza muy distinta (una presa amarilla y la pared beige)
-no se unen. Antes de trabajar a 1280 px eran 95 de 129 y 27 de 107. Por tipo, las de color y las negras se encuentran casi todas; las gris claro o blancas
-sobre pared clara, casi ninguna, porque no se distinguen de la pared por color.
+más cerca uno gris: hay presas en sombra de las que ningún píxel cae en su propio color.
+Además, los trozos de una presa se unen por su color real medido, no por el grupo al que cayó
+cada uno; dos tonos iguales con viveza muy distinta (una presa amarilla y la pared beige) no
+se unen.
+
+Dos presas del mismo color que se tocan forman una sola región. Se separan cuando la región
+son dos cuerpos unidos por un cuello mucho más estrecho que ambos (`Necks`): se va quitando
+grosor a la región y, si se parte cuando a los dos cuerpos aún les queda la mayor parte del
+suyo, cada píxel se asigna al cuerpo más cercano. Solo se aplica a presas con color, porque una
+presa gris y su sombra tienen esa misma forma. Con el cuello limitado al 30 % del cuerpo separa
+una de las doce detecciones que abarcaban varias presas sin partir ninguna presa entera; con el
+50 % separaba tres y partía dos.
+
+**Calidad medida.** Un test compara el detector con presas anotadas a mano en las tres fotos de
+referencia (`core/src/test/resources/holds`). Cifras vigentes, con las fotos recortadas para
+que no salga nadie: **106 de 119 presas encontradas (89 %)** y **26 detecciones falsas de 121**.
+Por tipo, las de color y las negras se encuentran casi todas; las gris claro o blancas sobre
+pared clara son las que más se escapan.
+
+Historial, con las fotos enteras (129 presas anotadas), por lo que no es comparable con la
+cifra vigente:
+
+| Estado del detector | Presas encontradas | Detecciones falsas |
+|---|---|---|
+| A 640 px | 95 de 129 | 27 de 107 |
+| A 1280 px, con el descarte de letras | 108 de 129 | 34 de 134 |
+| Con la pasada por contornos (presas claras: de 11 a 15 de 17) | 113 de 129 | 34 |
+| Último estado antes de recortar las fotos | 116 de 129 | 19 de 124 |
 
 ### Siluetas con modelo local
 
@@ -448,6 +468,11 @@ mucho mayor, en otro sitio) se ignora, las presas de pocos píxeles no pasan por
 este no puede ejecutarse, quedan los contornos del detector. El modelo se carga para cada foto
 y se libera después. En un móvil añade unos 2,7 s por pared de 40 presas. Los dos archivos del
 modelo no están en el repositorio: la compilación los descarga de la release `models-1`.
+
+La ejecución del modelo vive en `core` (`SilhouetteRunner`) y solo necesita el runtime, así que
+un test mide en el PC lo mismo que el de calidad del detector, después de las siluetas: 104 de
+119 presas y 25 detecciones falsas de 120. Son dos presas menos que el detector solo, donde un
+contorno que abarcaba dos presas se redibuja alrededor de una.
 
 ### Rocódromos
 
@@ -471,6 +496,21 @@ solo nombres completos) y a Photon (encuentra parte del nombre, pero puede tarda
 (Overpass, lugares con `sport=climbing` y nombre). Un resultado se añade como rocódromo nuevo
 o se usa como posición de uno existente. Es lo único de la app que usa Internet: el mapa y las
 búsquedas envían a esos servicios la zona o el texto consultados, nada más.
+
+### Encuadre con perspectiva
+
+El paso de recorte tiene un modo «Perspectiva» en el que cada esquina se mueve por separado
+(`core/image/CropQuad.kt`). La zona marcada se endereza con una transformación proyectiva antes
+de guardar la foto y detectar, de modo que una pared fotografiada de lado o desde abajo queda
+como vista de frente. Con el modo apagado el recorte es el rectángulo de siempre.
+
+### Idiomas
+
+Los textos están en recursos: inglés por defecto (`res/values`) y español (`res/values-es`). Las
+fechas y los números se escriben en el idioma de los textos, no en el del teléfono
+(`ui/Texts.kt`). Las estadísticas siguen agrupando por el nombre del color en español, que se
+traduce al mostrarlo. El nombre por defecto «Bloque N» del DAO no se traduce: solo se usa si el
+editor no aporta nombre, y el editor siempre aporta el del color.
 
 ### Publicación
 

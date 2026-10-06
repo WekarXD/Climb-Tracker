@@ -15,9 +15,15 @@ android {
     defaultConfig {
         applicationId = "com.climbtracker"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 37
         versionCode = 40
         versionName = "2.3.0"
+
+        // -Ppruebas builds a copy that installs next to the real app, with its own data, to
+        // try a change on a phone without touching the boulders kept in it.
+        val trial = project.hasProperty("pruebas")
+        if (trial) applicationIdSuffix = ".pruebas"
+        manifestPlaceholders["appLabel"] = if (trial) "Climb Tracker (pruebas)" else "Climb Tracker"
 
         // The segmentation runtime ships native code; phones are 64-bit ARM.
         ndk {
@@ -44,10 +50,20 @@ android {
                 keyPassword = System.getenv("SIGNING_KEY_PASSWORD").takeUnless { it.isNullOrEmpty() } ?: storePassword
             }
         }
-        buildTypes {
-            getByName("debug") {
-                signingConfig = signingConfigs.getByName("ci")
-            }
+    }
+    val signing = signingConfigs.getByName(if (ciKeystore != null) "ci" else "debug")
+
+    buildTypes {
+        getByName("debug") {
+            signingConfig = signing
+        }
+        // The published APK: shrunk and optimised. It keeps the key of the debug builds
+        // published before it, so it installs over them.
+        getByName("release") {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signing
         }
     }
 

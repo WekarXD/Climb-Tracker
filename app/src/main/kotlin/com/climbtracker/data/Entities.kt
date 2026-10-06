@@ -8,7 +8,6 @@ import androidx.room.PrimaryKey
 import com.climbtracker.core.editor.HoldRole
 import com.climbtracker.core.tracker.AttemptResult
 
-/** [width] and [height] are the size of the image the detection ran on, not of the photo file. */
 @Entity(tableName = "gyms")
 data class GymEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -19,6 +18,7 @@ data class GymEntity(
     val longitude: Double? = null,
 )
 
+/** [width] and [height] are the size of the image the detection ran on, not of the photo file. */
 @Entity(
     tableName = "walls",
     foreignKeys = [

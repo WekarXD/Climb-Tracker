@@ -98,6 +98,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import com.climbtracker.R
+import androidx.compose.ui.platform.LocalResources
 
 class DetailViewModel(app: Application, handle: SavedStateHandle) : AndroidViewModel(app) {
     private val climb = app as ClimbApp
@@ -271,7 +275,6 @@ class DetailViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
     }
 }
 
-private val ATTEMPT_DATE = DateTimeFormatter.ofPattern("d MMM HH:mm", Locale.forLanguageTag("es-ES"))
 
 private fun zoned(millis: Long) = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())
 
@@ -283,6 +286,7 @@ fun DetailScreen(
     vm: DetailViewModel = viewModel(),
 ) {
     val boulder by vm.boulder.collectAsStateWithLifecycle()
+    val resources = LocalResources.current
     val attempts by vm.attempts.collectAsStateWithLifecycle()
     var menuOpen by remember { mutableStateOf(false) }
     var showEdit by remember { mutableStateOf(false) }
@@ -292,7 +296,7 @@ fun DetailScreen(
     val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { showGym = true }
     if (showGym) {
         // The gym belongs to the wall, so every boulder on this photo moves with it.
-        GymDialog("Rocódromo de esta pared", vm.gymName.orEmpty(), gyms.map { it.name }, note = LOCATION_NOTE, onConfirm = {
+        GymDialog(stringResource(R.string.gym_of_wall), vm.gymName.orEmpty(), gyms.map { it.name }, note = stringResource(R.string.location_note), onConfirm = {
             showGym = false
             vm.assignGym(it)
         }, onDismiss = { showGym = false })
@@ -359,7 +363,7 @@ fun DetailScreen(
                     ),
                 ) {
                     Text(
-                        if (vm.picking) "Cancelar" else "+   ${ordinal(attempts.size + 1)} intento",
+                        if (vm.picking) stringResource(R.string.cancel) else "+   " + resources.attemptNumber(attempts.size + 1),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -376,20 +380,21 @@ fun DetailScreen(
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     CircleButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                     Box {
                         CircleButton(onClick = { menuOpen = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Más acciones")
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more_actions))
                         }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                             DropdownMenuItem(
-                                text = { Text("Compartir") },
+                                text = { Text(stringResource(R.string.share)) },
                                 leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
                                 onClick = {
                                     menuOpen = false
                                     vm.openShare(
                                         ShareCards.build(
+                                            resources,
                                             current.name, current.grade, vm.gymName, colour.toArgb(), best,
                                             current.createdAt, attempts.map { it.date to it.result },
                                         ),
@@ -397,7 +402,7 @@ fun DetailScreen(
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text("Corregir presas") },
+                                text = { Text(stringResource(R.string.fix_holds)) },
                                 leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                                 onClick = {
                                     menuOpen = false
@@ -405,7 +410,7 @@ fun DetailScreen(
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text("Escanear otro bloque en esta foto") },
+                                text = { Text(stringResource(R.string.scan_another)) },
                                 leadingIcon = { Icon(Icons.Default.AddCircleOutline, contentDescription = null) },
                                 onClick = {
                                     menuOpen = false
@@ -413,7 +418,7 @@ fun DetailScreen(
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text("Asignar rocódromo") },
+                                text = { Text(stringResource(R.string.assign_gym)) },
                                 leadingIcon = { Icon(Icons.Default.Place, contentDescription = null) },
                                 onClick = {
                                     menuOpen = false
@@ -421,7 +426,7 @@ fun DetailScreen(
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text("Editar nombre, grado y notas") },
+                                text = { Text(stringResource(R.string.edit_details)) },
                                 leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
                                 onClick = {
                                     menuOpen = false
@@ -429,7 +434,7 @@ fun DetailScreen(
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text(if (current.archived) "Volver a mis proyectos" else "Marcar como desmontado") },
+                                text = { Text(if (current.archived) stringResource(R.string.back_to_projects) else stringResource(R.string.mark_taken_down)) },
                                 leadingIcon = {
                                     Icon(
                                         if (current.archived) Icons.Default.Refresh else Icons.Default.Construction,
@@ -443,7 +448,7 @@ fun DetailScreen(
                             )
                             HorizontalDivider(color = Hairline)
                             DropdownMenuItem(
-                                text = { Text("Quitar de mis proyectos", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold) },
+                                text = { Text(stringResource(R.string.remove_from_projects), color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold) },
                                 onClick = {
                                     menuOpen = false
                                     showDelete = true
@@ -466,14 +471,14 @@ fun DetailScreen(
                         style = MaterialTheme.typography.titleMedium,
                     )
                     if (current.archived) {
-                        Text("Desmontado", color = Terracotta, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.taken_down), color = Terracotta, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
             if (vm.picking) {
                 item {
                     Text(
-                        "Toca la última presa que alcanzaste. Si llegaste arriba, toca la presa de top.",
+                        stringResource(R.string.pick_last_hold),
                         color = Terracotta,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -492,10 +497,10 @@ fun DetailScreen(
                                 val number = attempts.size + 1
                                 vm.addAttempt(holdId) { result ->
                                     scope.launch {
-                                        val outcome = if (result == AttemptResult.SEND) "encadenado" else "registrado"
+                                        val outcome = if (result == AttemptResult.SEND) R.string.attempt_sent else R.string.attempt_logged
                                         val pressed = snackbar.showSnackbar(
-                                            "${ordinal(number)} intento · $outcome",
-                                            actionLabel = "Deshacer",
+                                            resources.getString(outcome, resources.attemptNumber(number)),
+                                            actionLabel = resources.getString(R.string.undo),
                                             duration = SnackbarDuration.Short,
                                         )
                                         if (pressed == SnackbarResult.ActionPerformed) vm.undoLastAttempt()
@@ -510,17 +515,17 @@ fun DetailScreen(
             items(attempts.withIndex().reversed(), key = { it.value.id }) { (index, attempt) ->
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("${ordinal(index + 1)} intento", style = MaterialTheme.typography.titleMedium)
+                        Text(resources.attemptNumber(index + 1), style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.width(12.dp))
-                        Text(ATTEMPT_DATE.format(zoned(attempt.date)), color = Muted, modifier = Modifier.weight(1f))
+                        Text(resources.shortDayAndTime(zoned(attempt.date)), color = Muted, modifier = Modifier.weight(1f))
                         if (attempt.result == AttemptResult.SEND) {
-                            Text("encadenado", color = SendGreen, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.sent_lower), color = SendGreen, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                         } else {
                             val percent = (Progress.fraction(vm.holds, vm.selection, attempt.lastHoldId) * 100).roundToInt()
                             Text("$percent%", color = colour, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                         }
                         IconButton(onClick = { vm.deleteAttempt(attempt.id) }) {
-                            Icon(Icons.Default.Close, contentDescription = "Borrar intento", tint = Muted, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.delete_attempt), tint = Muted, modifier = Modifier.size(18.dp))
                         }
                     }
                     HorizontalDivider(color = Hairline)
@@ -531,7 +536,7 @@ fun DetailScreen(
 
     if (showEdit && current != null) {
         BoulderDialog(
-            title = "Editar datos",
+            title = stringResource(R.string.edit_details_title),
             initialName = current.name,
             initialGrade = current.grade,
             scale = vm.gradeScale,
@@ -547,15 +552,15 @@ fun DetailScreen(
     if (showDelete) {
         AlertDialog(
             onDismissRequest = { showDelete = false },
-            title = { Text("Quitar de mis proyectos") },
-            text = { Text("Se borrará el bloque y su historial de intentos. La pared y sus presas se conservan.") },
+            title = { Text(stringResource(R.string.remove_from_projects)) },
+            text = { Text(stringResource(R.string.remove_boulder_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     showDelete = false
                     vm.delete(onBack)
-                }) { Text("Quitar") }
+                }) { Text(stringResource(R.string.remove)) }
             },
-            dismissButton = { TextButton(onClick = { showDelete = false }) { Text("Cancelar") } },
+            dismissButton = { TextButton(onClick = { showDelete = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }
@@ -564,9 +569,9 @@ fun DetailScreen(
 private fun StatsCard(sessions: Int, attempts: Int, status: BoulderStatus, best: Float, colour: Color) {
     Surface(shape = RoundedCornerShape(28.dp), color = CardWhite, contentColor = Ink, border = BorderStroke(1.dp, Hairline)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Stat(if (sessions == 1) "SESIÓN" else "SESIONES", sessions, Modifier.weight(1f))
+            Stat(pluralStringResource(R.plurals.sessions_caps, sessions), sessions, Modifier.weight(1f))
             Box(Modifier.width(1.dp).height(56.dp).background(Hairline))
-            Stat(if (attempts == 1) "INTENTO" else "INTENTOS", attempts, Modifier.weight(1f))
+            Stat(pluralStringResource(R.plurals.attempts_caps, attempts), attempts, Modifier.weight(1f))
             Box(Modifier.width(1.dp).height(56.dp).background(Hairline))
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 when (status) {

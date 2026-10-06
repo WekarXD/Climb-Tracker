@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Only what shows before the first screen is drawn; the rest of the look is in ui/Theme.kt. -->
+    <style name="Theme.Climb" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+    <color name="window_background">#F4EFEA</color>
+</resources>

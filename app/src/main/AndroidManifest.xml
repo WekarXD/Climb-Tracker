@@ -19,8 +19,9 @@
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:label="Climb Tracker"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:label="${appLabel}"
+        android:localeConfig="@xml/locales_config"
+        android:theme="@style/Theme.Climb">
 
         <activity
             android:name=".MainActivity"
@@ -34,7 +35,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.climbtracker.files"
+            android:authorities="${applicationId}.files"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

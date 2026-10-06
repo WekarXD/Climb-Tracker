@@ -3,10 +3,20 @@ package com.climbtracker.ui
 import com.climbtracker.core.tracker.AttemptResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import android.app.Application
+import androidx.test.core.app.ApplicationProvider
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.time.ZoneOffset
 
+/** The words are checked in Spanish, the language the cards were designed in. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34], qualifiers = "es", application = Application::class)
 class ShareCardsTest {
+
+    private val resources get() = ApplicationProvider.getApplicationContext<Application>().resources
 
     private val day = 86_400_000L
     private val october4 = 20_365 * day // 2025-10-04
@@ -14,7 +24,7 @@ class ShareCardsTest {
     private val send = AttemptResult.SEND
 
     private fun card(attempts: List<Pair<Long, AttemptResult>>, best: Float = 0f, gym: String? = "Mi roco") =
-        ShareCards.build("Amarillo", "6A", gym, 0xFFE8C020.toInt(), best, october4, attempts, ZoneOffset.UTC)
+        ShareCards.build(resources, "Amarillo", "6A", gym, 0xFFE8C020.toInt(), best, october4, attempts, ZoneOffset.UTC)
 
     @Test
     fun aFlashSaysSoWithItsFirstAttempt() {

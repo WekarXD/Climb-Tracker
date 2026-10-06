@@ -110,6 +110,8 @@ import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.res.stringResource
+import com.climbtracker.R
 
 class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewModel(app) {
     private val climb = app as ClimbApp
@@ -261,7 +263,7 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         viewModelScope.launch {
             // A boulder saved without a name is called after its colour, e.g. "Amarillo".
             val finalName = if (name.isBlank() && boulderId == null) {
-                ColorNames.nameOf(Progress.circuitColor(state.holds, state.selection))
+                climb.getString(ColorNames.of(Progress.circuitColor(state.holds, state.selection)).label())
             } else {
                 name
             }
@@ -338,7 +340,7 @@ fun EditorScreen(onSaved: (Long) -> Unit, onBack: () -> Unit, vm: EditorViewMode
             when {
                 vm.loading -> Spinner(Modifier.align(Alignment.Center), color = Color.White)
                 bitmap == null || wall == null ->
-                    Text("Imagen no disponible", color = Color.White, modifier = Modifier.align(Alignment.Center))
+                    Text(stringResource(R.string.image_unavailable), color = Color.White, modifier = Modifier.align(Alignment.Center))
                 else -> EditorCanvas(bitmap, state, wall.width, vm::tap, vm::longPress)
             }
             Column(Modifier.align(Alignment.TopCenter)) {
@@ -347,26 +349,26 @@ fun EditorScreen(onSaved: (Long) -> Unit, onBack: () -> Unit, vm: EditorViewMode
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     CircleButton(onClick = leave) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                     Spacer(Modifier.weight(1f))
                     if (state.canUndo && !vm.busy) {
                         CircleButton(onClick = vm::undo) {
-                            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Deshacer")
+                            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = stringResource(R.string.undo))
                         }
                     }
                     if (vm.canRedetect && !vm.busy) {
                         CircleButton(onClick = { showSensitivity = true }) {
-                            Icon(Icons.Default.Tune, contentDescription = "Sensibilidad de detección")
+                            Icon(Icons.Default.Tune, contentDescription = stringResource(R.string.sensitivity))
                         }
                     }
                 }
                 if (!vm.loading && vm.bitmap != null) {
                     when {
                         state.holds.isEmpty() ->
-                            Banner("No se han detectado presas. Ajusta la sensibilidad o añade presas con una pulsación larga.")
+                            Banner(stringResource(R.string.no_holds_found))
                         state.holds.size > MAX_HOLDS ->
-                            Banner("Se han detectado muchas presas. Prueba a bajar la sensibilidad.")
+                            Banner(stringResource(R.string.many_holds_found))
                     }
                 }
             }
@@ -396,7 +398,7 @@ fun EditorScreen(onSaved: (Long) -> Unit, onBack: () -> Unit, vm: EditorViewMode
                     disabledContentColor = Color.White.copy(alpha = 0.45f),
                 ),
             ) {
-                Text("Guardar", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.save), fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     })
@@ -404,21 +406,21 @@ fun EditorScreen(onSaved: (Long) -> Unit, onBack: () -> Unit, vm: EditorViewMode
     if (showDiscard) {
         AlertDialog(
             onDismissRequest = { showDiscard = false },
-            title = { Text("¿Salir sin guardar?") },
-            text = { Text("Los cambios de este circuito se perderán.") },
+            title = { Text(stringResource(R.string.leave_title)) },
+            text = { Text(stringResource(R.string.leave_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     showDiscard = false
                     onBack()
-                }) { Text("Salir") }
+                }) { Text(stringResource(R.string.leave)) }
             },
-            dismissButton = { TextButton(onClick = { showDiscard = false }) { Text("Seguir editando") } },
+            dismissButton = { TextButton(onClick = { showDiscard = false }) { Text(stringResource(R.string.keep_editing)) } },
         )
     }
 
     if (showSave) {
         BoulderDialog(
-            title = if (vm.isExisting) "Guardar cambios" else "Guardar bloque",
+            title = if (vm.isExisting) stringResource(R.string.save_changes) else stringResource(R.string.save_boulder),
             initialName = vm.initialName,
             initialGrade = vm.initialGrade,
             scale = vm.gradeScale,
@@ -584,10 +586,10 @@ private fun ToolRow(tool: Tool, onSelect: (Tool) -> Unit) {
         Modifier.fillMaxWidth().padding(horizontal = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        FilterChip(selected = tool == Tool.CIRCUIT, onClick = { onSelect(Tool.CIRCUIT) }, label = { Text("Circuito") }, colors = colors)
-        FilterChip(selected = tool == Tool.START, onClick = { onSelect(Tool.START) }, label = { Text("Inicio") }, colors = colors)
-        FilterChip(selected = tool == Tool.TOP, onClick = { onSelect(Tool.TOP) }, label = { Text("Top") }, colors = colors)
-        FilterChip(selected = tool == Tool.FOOT, onClick = { onSelect(Tool.FOOT) }, label = { Text("Pies") }, colors = colors)
+        FilterChip(selected = tool == Tool.CIRCUIT, onClick = { onSelect(Tool.CIRCUIT) }, label = { Text(stringResource(R.string.tool_circuit)) }, colors = colors)
+        FilterChip(selected = tool == Tool.START, onClick = { onSelect(Tool.START) }, label = { Text(stringResource(R.string.tool_start)) }, colors = colors)
+        FilterChip(selected = tool == Tool.TOP, onClick = { onSelect(Tool.TOP) }, label = { Text(stringResource(R.string.tool_top)) }, colors = colors)
+        FilterChip(selected = tool == Tool.FOOT, onClick = { onSelect(Tool.FOOT) }, label = { Text(stringResource(R.string.tool_feet)) }, colors = colors)
     }
 }
 
@@ -630,20 +632,20 @@ private fun SensitivityDialog(initial: Float, hasSelection: Boolean, onConfirm: 
     var value by remember { mutableFloatStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Sensibilidad de detección") },
+        title = { Text(stringResource(R.string.sensitivity)) },
         text = {
             Column {
-                Text("Más sensibilidad detecta presas menos visibles, pero también más ruido.")
+                Text(stringResource(R.string.sensitivity_text))
                 Slider(value = value, onValueChange = { value = it }, valueRange = 0f..1f)
                 if (hasSelection) {
                     Text(
-                        "Repetir la detección descarta los cambios sin guardar de este circuito.",
+                        stringResource(R.string.redetect_warning),
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(value) }) { Text("Detectar de nuevo") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        confirmButton = { TextButton(onClick = { onConfirm(value) }) { Text(stringResource(R.string.detect_again)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }

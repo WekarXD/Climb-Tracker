@@ -28,16 +28,18 @@ Los datos de las capturas son de ejemplo.
 - **Compartir** un bloque como imagen vertical: la foto con el circuito, el resultado en grande, el rocódromo, la fecha y los intentos. Se puede cambiar la foto por una tuya y elegir la alineación del texto.
 - **Copia de seguridad**: exporta todos los datos y fotos a un archivo y restáuralos en otro móvil.
 
+La app está en español y en inglés, y sigue el tema claro u oscuro del móvil. Usa el primer idioma del móvil en el que esté traducida; se puede fijar otro en los ajustes del sistema, en «Idioma de la app» (Android 13 o superior).
+
 ## Instalación
 
-Descarga el APK de la [última release](https://github.com/WekarXD/Climb-Tracker/releases/latest) y ábrelo en un móvil con Android 8.0 o superior. Hay que permitir la instalación de apps de origen desconocido.
+Descarga el APK de la [última release](https://github.com/WekarXD/Climb-Tracker/releases/latest) y ábrelo en un móvil con Android 8.0 o superior y procesador ARM de 64 bits, que son casi todos los vendidos desde 2017. En un móvil de 32 bits o en un emulador x86 no se instala. Hay que permitir la instalación de apps de origen desconocido.
 
-Los APK publicados son compilaciones de depuración (de ahí el `-debug` del nombre), firmadas siempre con la misma clave, así que cada versión se instala encima de la anterior y conserva los datos. Sirven para instalar la app directamente, no para una tienda.
+Los APK se firman siempre con la misma clave, así que cada versión se instala encima de la anterior y conserva los datos. Hasta la 2.3.0 eran compilaciones de depuración (de ahí el `-debug` del nombre); las siguientes son de release, más pequeñas y rápidas, y se instalan igualmente encima de aquellas.
 
 ## Cómo se usa
 
 1. **Escanear ruta** → haz una foto o elige una de la galería.
-2. **Encuadra la pared** arrastrando las esquinas para dejar fuera suelo y techo, y pulsa **Detectar**.
+2. **Encuadra la pared** arrastrando las esquinas para dejar fuera suelo y techo, y pulsa **Detectar**. Si la foto está hecha de lado o desde abajo, activa **Perspectiva** y lleva cada esquina a una esquina de la pared: la foto se endereza antes de detectar.
 3. En el editor, toca el color de tu bloque. Corrige con pulsaciones largas y marca **Inicio**, **Top** y **Pies** con las herramientas de abajo.
 4. **Guardar** con nombre y grado.
 5. En el bloque, pulsa **+ intento** y toca la última presa que alcanzaste.
@@ -62,7 +64,7 @@ Las presas y sus colores se encuentran con visión clásica por color; un modelo
 
 - Las presas del color de la pared (gris claro o blancas sobre pared clara) se detectan por su sombra, con un contorno aproximado que a veces abarca una presa vecina. Si alguna no sale, se añade con pulsación larga.
 - Rejillas, personas, pegatinas y algún borde de panel pueden salir marcados como presa.
-- Las fotos con perspectiva muy forzada empeoran el resultado.
+- Las fotos con perspectiva muy forzada empeoran el resultado, aunque se enderecen al encuadrar: las presas lejanas quedan con menos detalle.
 - Los umbrales están ajustados con fotos de un solo rocódromo. El control de sensibilidad del editor permite corregirlo en otras condiciones de luz.
 
 ## Privacidad
@@ -111,7 +113,17 @@ Generar el APK de depuración, que queda en `app/build/outputs/apk/debug/`:
 ./gradlew :app:assembleDebug
 ```
 
-Los tests del detector sobre fotos reales dejan en `core/build/detection/` una imagen por foto con las presas contorneadas, útil para revisar a ojo cualquier cambio en la detección.
+`./gradlew :app:assembleRelease` genera el que se publica, reducido con R8. Compilado en local se firma con la clave de depuración de la máquina, así que no se instala encima de uno publicado.
+
+Pasar Android Lint: `./gradlew :app:lintDebug`.
+
+Para probar un cambio en un móvil sin tocar los bloques que tiene guardados, `-Ppruebas` compila una copia que se instala junto a la app, con sus propios datos y el nombre «Climb Tracker (pruebas)»:
+
+```bash
+./gradlew :app:assembleRelease -Ppruebas
+```
+
+Los tests del detector sobre fotos reales dejan en `core/build/detection/` una imagen por foto con las presas contorneadas, útil para revisar a ojo cualquier cambio en la detección. Los de calidad comparan con presas anotadas a mano, antes y después del modelo de segmentación, que se ejecuta también en el PC; sus imágenes quedan en `core/build/quality/`.
 
 ## Publicar una versión
 
@@ -120,11 +132,11 @@ Las versiones las compila y publica GitHub Actions:
 1. Sube `versionCode` y `versionName` en `app/build.gradle.kts` y confírmalo en `main`.
 2. Crea y empuja una etiqueta con ese mismo número, por ejemplo `git tag v2.0.0 && git push origin v2.0.0`. También vale crear la release desde GitHub con esa etiqueta.
 
-El flujo `Release` ejecuta los tests, compila el APK y lo adjunta a la release de esa etiqueta. Falla si la etiqueta no coincide con `versionName`.
+El flujo `Release` ejecuta los tests y lint, compila el APK de release y lo adjunta a la release de esa etiqueta. Falla si la etiqueta no coincide con `versionName`.
 
-Para que cada APK se instale encima del anterior, el flujo firma con un almacén de claves guardado en los secretos del repositorio: `SIGNING_KEYSTORE_BASE64` (el archivo en base64) y `SIGNING_STORE_PASSWORD`. Si el alias no es `climbtracker` o la clave tiene otra contraseña, se indican en `SIGNING_KEY_ALIAS` y `SIGNING_KEY_PASSWORD`. Sin ellos el APK se firma con una clave efímera y no actualiza instalaciones anteriores.
+Para que cada APK se instale encima del anterior, el flujo firma con un almacén de claves guardado en los secretos del repositorio: `SIGNING_KEYSTORE_BASE64` (el archivo en base64) y `SIGNING_STORE_PASSWORD`. Si el alias no es `climbtracker` o la clave tiene otra contraseña, se indican en `SIGNING_KEY_ALIAS` y `SIGNING_KEY_PASSWORD`. Sin el almacén de claves el flujo falla, porque un APK con otra firma no actualizaría instalaciones anteriores.
 
-El flujo `CI` ejecuta los mismos tests en cada cambio de `main` y en cada pull request.
+El flujo `CI` ejecuta los mismos tests y lint en cada cambio de `main` y en cada pull request. Dependabot propone cada mes las actualizaciones de bibliotecas y de acciones.
 
 ## Tecnología
 
@@ -132,7 +144,7 @@ Kotlin, Jetpack Compose (Material 3), Room, Navigation Compose, osmdroid para el
 
 ## Estado y planes
 
-Proyecto personal en desarrollo; la versión estable actual es la 2.0.0. Lo pendiente está organizado en [hitos](https://github.com/WekarXD/Climb-Tracker/milestones) e [issues](https://github.com/WekarXD/Climb-Tracker/issues).
+Proyecto personal en desarrollo; la versión estable es la de la [última release](https://github.com/WekarXD/Climb-Tracker/releases/latest). Lo pendiente está organizado en [hitos](https://github.com/WekarXD/Climb-Tracker/milestones) e [issues](https://github.com/WekarXD/Climb-Tracker/issues).
 
 ## Licencia
 

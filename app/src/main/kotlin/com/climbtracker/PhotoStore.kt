@@ -9,7 +9,7 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
 import com.climbtracker.core.detection.PixelImage
-import com.climbtracker.core.image.CropRect
+import com.climbtracker.core.image.CropQuad
 import com.climbtracker.core.image.ImageMath
 import java.io.File
 import java.util.UUID
@@ -19,10 +19,13 @@ class PhotoStore(private val context: Context) {
     private val walls = File(context.filesDir, "walls")
     private val importFile = File(context.cacheDir, "import.jpg")
 
+    /** Named after the app, so a test copy installed next to it has its own. */
+    private val authority = "${context.packageName}.files"
+
     /** Fixed destination for the camera app, so the capture survives the activity being recreated. */
     fun cameraUri(): Uri {
         val dir = File(context.cacheDir, "camera").apply { mkdirs() }
-        return FileProvider.getUriForFile(context, AUTHORITY, File(dir, "capture.jpg"))
+        return FileProvider.getUriForFile(context, authority, File(dir, "capture.jpg"))
     }
 
     /** Decodes [uri] subsampled, applies its EXIF rotation and stores it as the working photo. */
@@ -59,19 +62,31 @@ class PhotoStore(private val context: Context) {
 
     fun imported(maxSide: Int): Bitmap? = load(importFile.path, maxSide)
 
-    /** Crops the working photo and stores the result as a wall photo. Returns its path. */
-    fun cropAndSave(crop: CropRect): String? = try {
+    /**
+     * Keeps the part of the working photo inside [crop], straightened if its corners are not
+     * square, and stores it as a wall photo. Returns its path.
+     */
+    fun cropAndSave(crop: CropQuad): String? = try {
         val source = BitmapFactory.decodeFile(importFile.path)
         if (source == null) {
             null
         } else {
-            val c = crop.normalized()
-            val x = (c.left * source.width).toInt().coerceIn(0, source.width - 1)
-            val y = (c.top * source.height).toInt().coerceIn(0, source.height - 1)
-            val w = ((c.right - c.left) * source.width).toInt().coerceIn(1, source.width - x)
-            val h = ((c.bottom - c.top) * source.height).toInt().coerceIn(1, source.height - y)
+            val rect = crop.asRect()
+            val picture = if (rect != null) {
+                val c = rect.normalized()
+                val x = (c.left * source.width).toInt().coerceIn(0, source.width - 1)
+                val y = (c.top * source.height).toInt().coerceIn(0, source.height - 1)
+                val w = ((c.right - c.left) * source.width).toInt().coerceIn(1, source.width - x)
+                val h = ((c.bottom - c.top) * source.height).toInt().coerceIn(1, source.height - y)
+                Bitmap.createBitmap(source, x, y, w, h)
+            } else {
+                val argb = IntArray(source.width * source.height)
+                source.getPixels(argb, 0, source.width, 0, 0, source.width, source.height)
+                val straight = crop.straighten(PixelImage(source.width, source.height, argb))
+                Bitmap.createBitmap(straight.argb, straight.width, straight.height, Bitmap.Config.ARGB_8888)
+            }
             val file = File(walls, "${UUID.randomUUID()}.jpg")
-            save(Bitmap.createBitmap(source, x, y, w, h), file)
+            save(picture, file)
             file.path
         }
     } catch (e: Exception) {
@@ -105,9 +120,9 @@ class PhotoStore(private val context: Context) {
 
     /** Stores [bitmap] where other apps can be given read access to it, and returns its address. */
     fun shareUri(bitmap: Bitmap): Uri {
-        val file = File(File(context.cacheDir, "share"), "bloque.jpg")
+        val file = File(File(context.cacheDir, "share"), "climb-tracker.jpg")
         save(bitmap, file)
-        return FileProvider.getUriForFile(context, AUTHORITY, file)
+        return FileProvider.getUriForFile(context, authority, file)
     }
 
     fun delete(path: String) {
@@ -120,7 +135,6 @@ class PhotoStore(private val context: Context) {
     }
 
     companion object {
-        const val AUTHORITY = "com.climbtracker.files"
         const val MAX_SIDE = 2048
         const val DETECTION_SIDE = 1280
         private const val TAG = "PhotoStore"

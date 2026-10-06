@@ -30,6 +30,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -52,17 +54,26 @@ fun CircleButton(onClick: () -> Unit, modifier: Modifier = Modifier, content: @C
     }
 }
 
-/** Rounded filter chip; dark when selected. */
+/**
+ * Rounded filter chip; dark when selected. [description] is what a screen reader says instead of
+ * the content, for chips whose content says little without seeing it.
+ */
 @Composable
-fun Pill(selected: Boolean, onClick: () -> Unit, content: @Composable () -> Unit) {
+fun Pill(selected: Boolean, onClick: () -> Unit, description: String? = null, content: @Composable () -> Unit) {
     Surface(
+        selected = selected,
         onClick = onClick,
         shape = RoundedCornerShape(50),
         color = if (selected) Ink else CardWhite,
-        contentColor = if (selected) Color.White else Ink,
+        contentColor = if (selected) OnInk else Ink,
         border = BorderStroke(1.dp, if (selected) Ink else Hairline),
     ) {
-        Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+                .then(if (description == null) Modifier else Modifier.clearAndSetSemantics { contentDescription = description }),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             content()
         }
     }
