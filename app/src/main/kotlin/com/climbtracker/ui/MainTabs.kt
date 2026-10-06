@@ -2,7 +2,8 @@ package com.climbtracker.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 
 /** The two top-level screens, switched with the bottom bar. */
@@ -71,7 +73,7 @@ private fun MainBottomBar(selected: Int, onSelect: (Int) -> Unit) {
             border = BorderStroke(1.dp, Hairline),
             shadowElevation = 2.dp,
         ) {
-            Row(Modifier.padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.padding(4.dp).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Tab("Proyectos", Icons.AutoMirrored.Filled.Assignment, selected == 0, Modifier.weight(1f)) { onSelect(0) }
                 Tab("Rocódromos", Icons.Default.Place, selected == 1, Modifier.weight(1f)) { onSelect(1) }
                 Tab("Perfil", Icons.Default.Person, selected == 2, Modifier.weight(1f)) { onSelect(2) }
@@ -87,7 +89,7 @@ private fun Tab(label: String, icon: ImageVector, selected: Boolean, modifier: M
         modifier
             .clip(RoundedCornerShape(50))
             .background(if (selected) Color(0xFFF6E3D8) else Color.Transparent)
-            .clickable(onClick = onClick)
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
             .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

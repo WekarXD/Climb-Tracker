@@ -287,7 +287,11 @@ fun HomeScreen(
                 item(span = full) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         for ((name, argb, count) in colours) {
-                            Pill(selected = colour == name, onClick = { vm.colour.value = if (colour == name) null else name }) {
+                            Pill(
+                                selected = colour == name,
+                                onClick = { vm.colour.value = if (colour == name) null else name },
+                                description = if (count == 1) "$name, 1 bloque" else "$name, $count bloques",
+                            ) {
                                 ColorDot(argb, 16.dp)
                                 Spacer(Modifier.width(8.dp))
                                 Text(count.toString(), style = MaterialTheme.typography.titleSmall)
