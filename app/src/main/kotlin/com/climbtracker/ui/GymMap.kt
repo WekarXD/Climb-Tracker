@@ -130,7 +130,7 @@ private fun name(language: String): Expression =
 
 /**
  * What the plain styles leave out and helps to find one's way to a gym: meadows, the names of
- * parks, summits, and places worth a visit. Woods and parks, which they barely tint, get a
+ * parks, and places worth a visit. Woods and parks, which they barely tint, get a
  * shade that can be seen.
  */
 private fun enrich(style: Style, dark: Boolean, language: String) {
@@ -157,7 +157,6 @@ private fun enrich(style: Style, dark: Boolean, language: String) {
         style.addLayer(this)
     }
     label("ct_park", "park", 8f, 11f, name(language))
-    label("ct_peak", "mountain_peak", 10f, 11f, Expression.concat(Expression.literal("▲ "), name(language)))
     label(
         "ct_sight", "poi", 12f, 11f, name(language),
         oneOf("class", "attraction", "museum", "castle", "park", "campsite", "stadium"),
