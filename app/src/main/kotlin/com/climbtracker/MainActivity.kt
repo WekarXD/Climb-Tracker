@@ -22,8 +22,8 @@ import com.climbtracker.ui.NewWallScreen
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // The app is always light, so the system bars always get dark icons.
-        val bars = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+        // The app follows the system theme, and so do the icons of the system bars.
+        val bars = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
         enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
         setContent {
             ClimbTheme {

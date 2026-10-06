@@ -92,8 +92,8 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
 }
 
 private val RECORD_DAY = DateTimeFormatter.ofPattern("d 'de' MMMM", Locale.forLanguageTag("es-ES"))
-private val SendTint = Color(0xFFE3F1E7)
-private val TriedTint = Color(0xFFF1D9CB)
+private val SendTint: Color @Composable get() = LocalPalette.current.sendTint
+private val TriedTint: Color @Composable get() = if (LocalPalette.current.dark) LocalPalette.current.terracottaTint else Color(0xFFF1D9CB)
 
 @Composable
 fun ProfileScreen(bottomBar: @Composable () -> Unit = {}, vm: ProfileViewModel = viewModel()) {

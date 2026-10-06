@@ -343,8 +343,8 @@ secciones anteriores cuando haya contradicción.
 
 ### Aspecto
 
-- Tema claro fijo (fondo crema, tarjetas blancas, acento terracota); la app no sigue el modo
-  oscuro del sistema.
+- Tema cálido (fondo crema, tarjetas blancas, acento terracota) con variante oscura, que sigue
+  el modo del sistema. El editor, el recorte y las tarjetas que se comparten son iguales en ambos.
 - **Inicio**: rejilla de dos columnas con tarjetas de foto, agrupadas por día ("Sesión del
   5 de octubre"). Filtros por estado ("En progreso", "Encadenado", "Flash"), chips por color y
   un filtro "Desmontados".

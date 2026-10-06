@@ -88,7 +88,7 @@ private fun Tab(label: String, icon: ImageVector, selected: Boolean, modifier: M
     Column(
         modifier
             .clip(RoundedCornerShape(50))
-            .background(if (selected) Color(0xFFF6E3D8) else Color.Transparent)
+            .background(if (selected) LocalPalette.current.terracottaTint else Color.Transparent)
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
             .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

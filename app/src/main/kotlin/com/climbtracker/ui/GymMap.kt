@@ -52,6 +52,24 @@ private val PALE = ColorMatrixColorFilter(
 )
 private const val PALE_BACKGROUND = 0xFFF1F0EE.toInt()
 
+/** The same for the dark theme: the map turned over to dark greys, with light roads and names. */
+private val DIM = ColorMatrixColorFilter(
+    ColorMatrix().apply {
+        setSaturation(0.2f)
+        postConcat(
+            ColorMatrix(
+                floatArrayOf(
+                    -0.62f, 0f, 0f, 0f, 190f,
+                    0f, -0.62f, 0f, 0f, 188f,
+                    0f, 0f, -0.62f, 0f, 186f,
+                    0f, 0f, 0f, 1f, 0f,
+                ),
+            ),
+        )
+    },
+)
+private const val DIM_BACKGROUND = 0xFF201E1C.toInt()
+
 /** A marker on the map. [own] ones are the user's gyms; [key] says what it stands for. */
 data class MapPin(val point: GeoPoint, val title: String, val own: Boolean, val key: Any)
 
@@ -102,7 +120,9 @@ fun GymMap(state: GymMapState, pins: List<MapPin>, onPin: (MapPin) -> Unit, modi
     val currentOnPin = rememberUpdatedState(onPin)
     val density = LocalContext.current.resources.displayMetrics.density
     val ownPin = remember { pinBitmap(Terracotta.toArgb(), density) }
-    val foundPin = remember { pinBitmap(Ink.toArgb(), density) }
+    val dark = LocalPalette.current.dark
+    val ink = Ink.toArgb()
+    val foundPin = remember(ink) { pinBitmap(ink, density) }
 
     AndroidView(
         modifier = modifier,
@@ -118,11 +138,6 @@ fun GymMap(state: GymMapState, pins: List<MapPin>, onPin: (MapPin) -> Unit, modi
                 // Drawn larger than the screen needs: each view then shows a less detailed map.
                 isTilesScaledToDpi = true
                 tilesScaleFactor = 1.3f
-                overlayManager.tilesOverlay.apply {
-                    setColorFilter(PALE)
-                    loadingBackgroundColor = PALE_BACKGROUND
-                    loadingLineColor = PALE_BACKGROUND
-                }
                 setMultiTouchControls(true)
                 zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
                 minZoomLevel = 3.0
@@ -132,6 +147,11 @@ fun GymMap(state: GymMapState, pins: List<MapPin>, onPin: (MapPin) -> Unit, modi
             }
         },
         update = { map ->
+            map.overlayManager.tilesOverlay.apply {
+                setColorFilter(if (dark) DIM else PALE)
+                loadingBackgroundColor = if (dark) DIM_BACKGROUND else PALE_BACKGROUND
+                loadingLineColor = loadingBackgroundColor
+            }
             map.overlays.removeAll { it is Marker }
             for (pin in pins) {
                 map.overlays.add(

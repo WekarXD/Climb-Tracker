@@ -65,7 +65,7 @@ fun Pill(selected: Boolean, onClick: () -> Unit, description: String? = null, co
         onClick = onClick,
         shape = RoundedCornerShape(50),
         color = if (selected) Ink else CardWhite,
-        contentColor = if (selected) Color.White else Ink,
+        contentColor = if (selected) OnInk else Ink,
         border = BorderStroke(1.dp, if (selected) Ink else Hairline),
     ) {
         Row(
