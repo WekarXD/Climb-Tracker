@@ -12,6 +12,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -25,6 +26,9 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
+import org.maplibre.android.style.layers.BackgroundLayer
+import org.maplibre.android.style.layers.FillLayer
+import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
@@ -36,7 +40,8 @@ import org.maplibre.geojson.Point
 /** Where the map comes from: drawn on the phone from OpenFreeMap's data, or OpenStreetMap's own pictures. */
 private const val VECTOR = true
 
-/** Credit the map must show. */
+/** Credit the map shows at all times, and the whole of it, shown when that is touched. */
+const val MAP_CREDIT_SHORT = "© OpenStreetMap"
 const val MAP_CREDIT = "OpenFreeMap © OpenMapTiles · © OpenStreetMap"
 
 private const val OPEN_FREE_MAP = "https://tiles.openfreemap.org/styles/"
@@ -48,7 +53,7 @@ private const val OPEN_FREE_MAP = "https://tiles.openfreemap.org/styles/"
 private fun pictureStyle(dark: Boolean): String {
     val background = if (dark) "#201e1c" else "#f1f0ee"
     val paint = if (dark) {
-        """"raster-saturation":-0.8,"raster-brightness-min":0.75,"raster-brightness-max":0.12"""
+        """"raster-saturation":-1,"raster-brightness-min":0.75,"raster-brightness-max":0.12"""
     } else {
         """"raster-saturation":-0.8,"raster-brightness-min":0.4,"raster-brightness-max":1"""
     }
@@ -120,7 +125,13 @@ private const val OWN = "own"
 private const val FOUND = "found"
 
 /** What the map is showing, kept so that a new style can be dressed again with it. */
-private class Shown(var pins: List<MapPin> = emptyList(), var dark: Boolean = false, var ownPin: Bitmap? = null, var foundPin: Bitmap? = null)
+private class Shown(
+    var pins: List<MapPin> = emptyList(),
+    var dark: Boolean = false,
+    var language: String = "en",
+    var ownPin: Bitmap? = null,
+    var foundPin: Bitmap? = null,
+)
 
 private fun features(pins: List<MapPin>): FeatureCollection = FeatureCollection.fromFeatures(
     pins.mapIndexed { i, pin ->
@@ -131,9 +142,63 @@ private fun features(pins: List<MapPin>): FeatureCollection = FeatureCollection.
     },
 )
 
+/**
+ * Fits a style drawn on the phone to the app: place names in the language of the app where the
+ * map has them, quieter lettering, and for the dark theme the warm dark tones of the app with
+ * streets that can be told from the ground.
+ */
+private fun tune(style: Style, dark: Boolean, language: String) {
+    for (layer in style.layers) {
+        when (layer) {
+            is SymbolLayer -> {
+                val field = layer.textField
+                val current = field.expression?.toString() ?: field.value?.toString().orEmpty()
+                // Road numbers and the like are left as they are.
+                if ("name" in current) {
+                    layer.setProperties(
+                        PropertyFactory.textField(
+                            Expression.coalesce(Expression.get("name:$language"), Expression.get("name:latin"), Expression.get("name")),
+                        ),
+                    )
+                }
+                layer.setProperties(
+                    PropertyFactory.textColor(if (dark) "#cfc7be" else "#5c554e"),
+                    PropertyFactory.textHaloColor(if (dark) "#1c1a18" else "#ffffff"),
+                )
+            }
+            is BackgroundLayer -> if (dark) layer.setProperties(PropertyFactory.backgroundColor("#1c1a18"))
+            is FillLayer -> if (dark) {
+                layer.setProperties(
+                    PropertyFactory.fillColor(
+                        when (layer.sourceLayer) {
+                            "water" -> "#10161b"
+                            "building" -> "#2d2925"
+                            else -> "#23201d"
+                        },
+                    ),
+                )
+            }
+            is LineLayer -> if (dark) {
+                layer.setProperties(
+                    PropertyFactory.lineColor(
+                        when (layer.sourceLayer) {
+                            "transportation" -> "#5e5851"
+                            "boundary" -> "#7d746a"
+                            "waterway" -> "#10161b"
+                            else -> "#3b3632"
+                        },
+                    ),
+                )
+            }
+            else -> Unit
+        }
+    }
+}
+
 /** Loads the style for the theme and puts the pins on it. */
 private fun dress(map: MapLibreMap, shown: Shown) {
     map.setStyle(style(shown.dark)) { loaded ->
+        if (VECTOR) tune(loaded, shown.dark, shown.language)
         shown.ownPin?.let { loaded.addImage(OWN, it) }
         shown.foundPin?.let { loaded.addImage(FOUND, it) }
         loaded.addSource(GeoJsonSource(PINS, features(shown.pins)))
@@ -155,6 +220,7 @@ fun GymMap(state: GymMapState, pins: List<MapPin>, onPin: (MapPin) -> Unit, modi
     val density = LocalContext.current.resources.displayMetrics.density
     val dark = LocalPalette.current.dark
     val ink = Ink.toArgb()
+    val language = LocalResources.current.textLocale().language
     val shown = remember { Shown() }
     val view = remember { arrayOfNulls<MapView>(1) }
 
@@ -195,6 +261,7 @@ fun GymMap(state: GymMapState, pins: List<MapPin>, onPin: (MapPin) -> Unit, modi
             val restyle = shown.dark != dark || shown.ownPin == null
             shown.pins = pins
             shown.dark = dark
+            shown.language = language
             if (restyle) {
                 shown.ownPin = pinBitmap(Terracotta.toArgb(), density)
                 shown.foundPin = pinBitmap(ink, density)

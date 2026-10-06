@@ -323,13 +323,25 @@ fun GymsScreen(onOpen: (GymEntity) -> Unit, bottomBar: @Composable () -> Unit = 
                         Text(stringResource(R.string.search_area), Modifier.padding(start = 8.dp), style = MaterialTheme.typography.titleSmall)
                     }
                 }
+                // The short credit is always there; touching it shows everyone the map is owed to.
+                var wholeCredit by remember { mutableStateOf(false) }
                 Surface(
+                    onClick = { wholeCredit = !wholeCredit },
+                    enabled = MAP_CREDIT != MAP_CREDIT_SHORT,
                     modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp),
                     shape = RoundedCornerShape(50),
                     color = CardWhite.copy(alpha = 0.9f),
                     contentColor = Ink,
                 ) {
-                    Text(MAP_CREDIT, Modifier.padding(horizontal = 10.dp, vertical = 3.dp), style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        when {
+                            MAP_CREDIT == MAP_CREDIT_SHORT -> MAP_CREDIT
+                            wholeCredit -> MAP_CREDIT
+                            else -> "$MAP_CREDIT_SHORT  ⓘ"
+                        },
+                        Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                    )
                 }
             }
             LazyColumn(
