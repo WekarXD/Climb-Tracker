@@ -126,6 +126,62 @@ class BackupTest {
     }
 
     @Test
+    fun aCurrentPhotoWithTheSameNameIsNotOverwrittenBeforeTheDataIsReplaced() = runTest {
+        val zip = exported()
+        // Same file name as the photo in the backup, different picture.
+        File(targetPhotos, "pared.jpg").writeBytes(byteArrayOf(9, 9))
+
+        Backup(targetDb.dao(), targetPhotos).import(ByteArrayInputStream(zip))
+
+        val photo = File(targetDb.dao().allWallsOnce().single().photoPath)
+        assertEquals(listOf<Byte>(1, 2, 3, 4, 5), photo.readBytes().toList())
+        assertEquals(listOf(photo.name), targetPhotos.list()!!.toList())
+    }
+
+    @Test
+    fun aBackupWhoseDataDoesNotFitLeavesDataAndPhotosAsTheyWere() = runTest {
+        val repo = ClimbRepository(targetDb.dao())
+        val oldPhoto = File(targetPhotos, "vieja.jpg").apply { writeBytes(byteArrayOf(9)) }
+        val oldWall = repo.createWall(oldPhoto.path, 640, 480, DetectionResult(listOf(hold(0.5f)), emptyList()))
+        repo.saveBoulder(null, oldWall, "Intacto", "5", mapOf(repo.holds(oldWall)[0].id to SelectedHold(HoldRole.NORMAL, 0)))
+        val out = ByteArrayOutputStream()
+        ZipOutputStream(out).use { zip ->
+            zip.putNextEntry(ZipEntry("climbtracker.json"))
+            // The hold belongs to a wall that is not in the backup.
+            zip.write(
+                """{"format":1,"walls":[{"id":1,"photo":"nueva.jpg","width":1,"height":1,"createdAt":1,"gymId":null}],
+                    "holds":[{"id":1,"wallId":77,"contour":"","argb":0,"colorGroup":0,"manual":false}],
+                    "boulders":[],"boulderHolds":[],"attempts":[]}""".toByteArray(),
+            )
+            zip.closeEntry()
+            zip.putNextEntry(ZipEntry("walls/nueva.jpg"))
+            zip.write(7)
+            zip.closeEntry()
+        }
+
+        try {
+            Backup(targetDb.dao(), targetPhotos).import(ByteArrayInputStream(out.toByteArray()))
+            fail("import should have thrown")
+        } catch (expected: Exception) {
+            assertEquals(listOf("Intacto"), repo.summaries().first().map { it.boulder.name })
+            assertEquals(listOf("vieja.jpg"), targetPhotos.list()!!.toList())
+        }
+    }
+
+    @Test
+    fun aWallWhosePhotoIsNotInTheBackupComesBackWithoutIt() = runTest {
+        exported()
+        File(sourcePhotos, "pared.jpg").delete()
+        val out = ByteArrayOutputStream()
+        Backup(sourceDb.dao(), sourcePhotos).export(out)
+
+        Backup(targetDb.dao(), targetPhotos).import(ByteArrayInputStream(out.toByteArray()))
+
+        assertEquals(1, targetDb.dao().allWallsOnce().size)
+        assertEquals(emptyList<String>(), targetPhotos.list()!!.toList())
+    }
+
+    @Test
     fun aFileThatIsNotABackupIsRejectedAndNothingChanges() = runTest {
         val repo = ClimbRepository(targetDb.dao())
         val wallId = repo.createWall("x.jpg", 640, 480, DetectionResult(listOf(hold(0.5f)), emptyList()))

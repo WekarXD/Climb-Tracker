@@ -8,6 +8,8 @@ import org.json.JSONObject
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
+import java.nio.file.Files
+import java.util.UUID
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -62,7 +64,13 @@ class Backup(private val dao: ClimbDao, private val photoDir: File) {
 
     /**
      * Replaces all data and photos with those of the backup read from [input].
-     * Throws IllegalArgumentException, leaving everything as it was, if it is not a backup.
+     * Throws IllegalArgumentException if it is not a backup, or IOException if its photos cannot
+     * be stored; either way everything is left as it was.
+     *
+     * The photos of the backup are put next to the current ones before the data is replaced, and
+     * the old ones are removed only afterwards. Stopped at any point, every wall still has its
+     * photo: at worst some files are left that no wall uses, and the next import removes them.
+     * A wall whose photo was already missing when the backup was made comes back without one.
      */
     suspend fun import(input: InputStream) {
         val staging = File(photoDir.parentFile, "import-staging").apply {
@@ -89,6 +97,11 @@ class Backup(private val dao: ClimbDao, private val photoDir: File) {
             }
             require(json.optInt("format") == FORMAT) { "Unsupported backup format" }
 
+            photoDir.mkdirs()
+            removeUnusedPhotos()
+            // Name each photo of the backup takes here: its own, unless a current photo has it.
+            val names = HashMap<String, String>()
+
             // Absent in backups made before gyms existed.
             var gyms: List<GymEntity> = emptyList()
             val walls: List<WallEntity>
@@ -106,7 +119,8 @@ class Backup(private val dao: ClimbDao, private val photoDir: File) {
                     }
                 }
                 walls = list(json, "walls") { o ->
-                    WallEntity(o.getLong("id"), File(photoDir, File(o.getString("photo")).name).path, o.getInt("width"), o.getInt("height"), o.getLong("createdAt"), if (o.isNull("gymId")) null else o.getLong("gymId"))
+                    val photo = File(o.getString("photo")).name
+                    WallEntity(o.getLong("id"), File(photoDir, names.getOrPut(photo) { freeName(photo) }).path, o.getInt("width"), o.getInt("height"), o.getLong("createdAt"), if (o.isNull("gymId")) null else o.getLong("gymId"))
                 }
                 holds = list(json, "holds") { o ->
                     HoldEntity(o.getLong("id"), o.getLong("wallId"), o.getString("contour"), o.getInt("argb"), o.getInt("colorGroup"), o.getBoolean("manual"))
@@ -124,16 +138,35 @@ class Backup(private val dao: ClimbDao, private val photoDir: File) {
                 throw IllegalArgumentException("The backup data is incomplete", e)
             }
 
-            dao.restore(gyms, walls, holds, boulders, links, attempts)
-
-            photoDir.mkdirs()
-            photoDir.listFiles()?.forEach { it.delete() }
-            staging.listFiles()?.forEach { it.renameTo(File(photoDir, it.name)) }
+            val moved = ArrayList<File>()
+            try {
+                for (photo in staging.listFiles().orEmpty()) {
+                    // A photo no wall of the backup refers to is not brought in.
+                    val target = File(photoDir, names[photo.name] ?: continue)
+                    Files.move(photo.toPath(), target.toPath())
+                    moved += target
+                }
+                dao.restore(gyms, walls, holds, boulders, links, attempts)
+            } catch (e: Exception) {
+                moved.forEach { it.delete() }
+                throw e
+            }
+            removeUnusedPhotos()
         } catch (e: java.util.zip.ZipException) {
             throw IllegalArgumentException("The file is not a zip archive", e)
         } finally {
             staging.deleteRecursively()
         }
+    }
+
+    /** [name], or a variant of it, that no file in the photo folder has. */
+    private fun freeName(name: String): String =
+        if (File(photoDir, name).exists()) "${UUID.randomUUID()}-$name" else name
+
+    /** Deletes the files in the photo folder that no wall refers to. */
+    private suspend fun removeUnusedPhotos() {
+        val used = dao.allWallsOnce().mapTo(HashSet()) { File(it.photoPath).name }
+        photoDir.listFiles()?.forEach { if (it.name !in used) it.delete() }
     }
 
     private fun <T> array(items: List<T>, map: (T) -> JSONObject): JSONArray = JSONArray().also { a -> items.forEach { a.put(map(it)) } }
