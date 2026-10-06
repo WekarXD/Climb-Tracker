@@ -30,7 +30,7 @@ Los datos de las capturas son de ejemplo.
 
 ## Instalación
 
-Descarga el APK de la [última release](https://github.com/WekarXD/Climb-Tracker/releases/latest) y ábrelo en un móvil con Android 8.0 o superior. Hay que permitir la instalación de apps de origen desconocido.
+Descarga el APK de la [última release](https://github.com/WekarXD/Climb-Tracker/releases/latest) y ábrelo en un móvil con Android 8.0 o superior y procesador ARM de 64 bits, que son casi todos los vendidos desde 2017. En un móvil de 32 bits o en un emulador x86 no se instala. Hay que permitir la instalación de apps de origen desconocido.
 
 Los APK publicados son compilaciones de depuración (de ahí el `-debug` del nombre), firmadas siempre con la misma clave, así que cada versión se instala encima de la anterior y conserva los datos. Sirven para instalar la app directamente, no para una tienda.
 
@@ -132,7 +132,7 @@ Kotlin, Jetpack Compose (Material 3), Room, Navigation Compose, osmdroid para el
 
 ## Estado y planes
 
-Proyecto personal en desarrollo; la versión estable actual es la 2.0.0. Lo pendiente está organizado en [hitos](https://github.com/WekarXD/Climb-Tracker/milestones) e [issues](https://github.com/WekarXD/Climb-Tracker/issues).
+Proyecto personal en desarrollo; la versión estable es la de la [última release](https://github.com/WekarXD/Climb-Tracker/releases/latest). Lo pendiente está organizado en [hitos](https://github.com/WekarXD/Climb-Tracker/milestones) e [issues](https://github.com/WekarXD/Climb-Tracker/issues).
 
 ## Licencia
 
