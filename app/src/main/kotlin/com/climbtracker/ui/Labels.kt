@@ -1,15 +1,12 @@
 package com.climbtracker.ui
 
-import com.climbtracker.core.tracker.AttemptResult
+import androidx.annotation.StringRes
+import com.climbtracker.R
 import com.climbtracker.core.tracker.BoulderStatus
 
-fun BoulderStatus.label(): String = when (this) {
-    BoulderStatus.PROJECT -> "En progreso"
-    BoulderStatus.SENT -> "Encadenado"
-    BoulderStatus.FLASH -> "Flash"
-}
-
-fun AttemptResult.label(): String = when (this) {
-    AttemptResult.FAIL -> "Intento"
-    AttemptResult.SEND -> "Encadenado"
+@StringRes
+fun BoulderStatus.label(): Int = when (this) {
+    BoulderStatus.PROJECT -> R.string.status_project
+    BoulderStatus.SENT -> R.string.status_sent
+    BoulderStatus.FLASH -> R.string.status_flash
 }

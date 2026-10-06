@@ -72,6 +72,10 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 import java.util.Locale
 import kotlin.math.roundToInt
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import com.climbtracker.R
+import androidx.compose.ui.platform.LocalResources
 
 class GymsViewModel(app: Application) : AndroidViewModel(app) {
     private val climb = app as ClimbApp
@@ -109,11 +113,11 @@ class GymsViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val fix = climb.locator.current(timeoutMillis = 8000)
             message = if (fix == null) {
-                "No se ha podido obtener la ubicación. Revisa el permiso y que la ubicación esté activada."
+                climb.getString(R.string.location_failed)
             } else {
                 here = fix.point
                 climb.repository.setGymLocation(id, fix.point)
-                "Ubicación guardada."
+                climb.getString(R.string.location_saved)
             }
         }
     }
@@ -151,7 +155,7 @@ class GymsViewModel(app: Application) : AndroidViewModel(app) {
             }
             searchingName = false
             if (results.isEmpty()) {
-                message = if (failures == sources.size) "No se ha podido buscar. Revisa la conexión." else "No se ha encontrado ningún rocódromo."
+                message = if (failures == sources.size) climb.getString(R.string.search_failed) else climb.getString(R.string.no_gym_found)
             }
         }
     }
@@ -159,7 +163,7 @@ class GymsViewModel(app: Application) : AndroidViewModel(app) {
     fun searchArea(bounds: MapBounds?) {
         if (bounds == null) return
         if (bounds.north - bounds.south > MAX_AREA_DEGREES) {
-            message = "Acerca el mapa para buscar en una zona más pequeña."
+            message = climb.getString(R.string.zoom_in)
             return
         }
         find { climb.gymSearch.inArea(bounds.south, bounds.west, bounds.north, bounds.east) }
@@ -171,9 +175,9 @@ class GymsViewModel(app: Application) : AndroidViewModel(app) {
             searching = true
             try {
                 results = lookUp()
-                if (results.isEmpty()) message = "No se ha encontrado ningún rocódromo."
+                if (results.isEmpty()) message = climb.getString(R.string.no_gym_found)
             } catch (e: IOException) {
-                message = "No se ha podido buscar. Revisa la conexión."
+                message = climb.getString(R.string.search_failed)
             } finally {
                 searching = false
             }
@@ -189,7 +193,7 @@ class GymsViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             climb.repository.addGym(place.name, place.point)
             results = results - place
-            message = "«${place.name}» está en tus rocódromos."
+            message = climb.getString(R.string.gym_added, place.name)
         }
     }
 
@@ -197,7 +201,7 @@ class GymsViewModel(app: Application) : AndroidViewModel(app) {
     fun useFor(gym: GymEntity, place: Place) {
         viewModelScope.launch {
             climb.repository.setGymLocation(gym.id, place.point)
-            message = "Ubicación de «${gym.name}» guardada."
+            message = climb.getString(R.string.gym_location_saved, gym.name)
         }
     }
 
@@ -206,9 +210,6 @@ class GymsViewModel(app: Application) : AndroidViewModel(app) {
         const val MAX_AREA_DEGREES = 2.0
     }
 }
-
-const val LOCATION_NOTE =
-    "Con el permiso de ubicación, la app recuerda dónde está cada rocódromo y lo elige sola al escanear una pared allí."
 
 /** Name of a gym, with the names already in use as suggestions. Used to put a wall in a gym. */
 @Composable
@@ -226,15 +227,15 @@ fun GymDialog(
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Rocódromo") }, singleLine = true)
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.gym)) }, singleLine = true)
                 for (suggestion in suggestions.filter { it != name }.take(4)) {
                     TextButton(onClick = { name = suggestion }) { Text(suggestion) }
                 }
                 if (note != null) Text(note, color = Muted, style = MaterialTheme.typography.bodySmall)
             }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(name) }) { Text("Guardar") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        confirmButton = { TextButton(onClick = { onConfirm(name) }) { Text(stringResource(R.string.save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
@@ -244,10 +245,11 @@ private fun GymEntity.point(): GeoPoint? {
     return GeoPoint(lat, lon)
 }
 
+@Composable
 private fun distanceLabel(from: GeoPoint?, to: GeoPoint?): String? {
     if (from == null || to == null) return null
     val metres = GymLocator.distanceMeters(from, to)
-    return if (metres < 1000) "${metres.roundToInt()} m" else String.format(Locale.forLanguageTag("es"), "%.1f km", metres / 1000)
+    return if (metres < 1000) "${metres.roundToInt()} m" else String.format(LocalResources.current.textLocale(), "%.1f km", metres / 1000)
 }
 
 @Composable
@@ -318,7 +320,7 @@ fun GymsScreen(onOpen: (GymEntity) -> Unit, bottomBar: @Composable () -> Unit = 
                         } else {
                             Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
                         }
-                        Text("Buscar en esta zona", Modifier.padding(start = 8.dp), style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.search_area), Modifier.padding(start = 8.dp), style = MaterialTheme.typography.titleSmall)
                     }
                 }
                 Surface(
@@ -340,7 +342,7 @@ fun GymsScreen(onOpen: (GymEntity) -> Unit, bottomBar: @Composable () -> Unit = 
                         value = query,
                         onValueChange = { query = it },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Buscar un rocódromo") },
+                        placeholder = { Text(stringResource(R.string.search_gym)) },
                         leadingIcon = {
                             if (vm.searchingName) {
                                 Spinner(size = 20.dp, strokeWidth = 2.dp)
@@ -360,9 +362,9 @@ fun GymsScreen(onOpen: (GymEntity) -> Unit, bottomBar: @Composable () -> Unit = 
                 if (vm.results.isNotEmpty()) {
                     item {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            SectionLabel("Encontrados", Modifier.weight(1f))
+                            SectionLabel(stringResource(R.string.found), Modifier.weight(1f))
                             IconButton(onClick = vm::clearResults) {
-                                Icon(Icons.Default.Close, contentDescription = "Quitar los resultados", tint = Muted)
+                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear_results), tint = Muted)
                             }
                         }
                     }
@@ -373,11 +375,11 @@ fun GymsScreen(onOpen: (GymEntity) -> Unit, bottomBar: @Composable () -> Unit = 
                         }
                     }
                 }
-                item { SectionLabel("Tus rocódromos") }
+                item { SectionLabel(stringResource(R.string.your_gyms)) }
                 if (gyms.isEmpty()) {
                     item {
                         Text(
-                            "Aún no hay ninguno. Búscalo en el mapa, o abre un bloque y elige «Asignar rocódromo» en su menú.",
+                            stringResource(R.string.no_gyms_yet),
                             color = Muted,
                             modifier = Modifier.padding(vertical = 16.dp),
                         )
@@ -414,22 +416,22 @@ fun GymsScreen(onOpen: (GymEntity) -> Unit, bottomBar: @Composable () -> Unit = 
                     TextButton(onClick = {
                         vm.add(place)
                         picked = null
-                    }) { Text(if (sameName == null) "Añadir a mis rocódromos" else "Usar como ubicación de «${sameName.name}»") }
+                    }) { Text(if (sameName == null) stringResource(R.string.add_to_gyms) else stringResource(R.string.use_as_location, sameName.name)) }
                     // A gym may be called something else on the map than in the app.
                     for (gym in gyms.filter { it.id != sameName?.id }.take(5)) {
                         TextButton(onClick = {
                             vm.useFor(gym, place)
                             picked = null
-                        }) { Text("Usar como ubicación de «${gym.name}»") }
+                        }) { Text(stringResource(R.string.use_as_location, gym.name)) }
                     }
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { picked = null }) { Text("Cancelar") } },
+            dismissButton = { TextButton(onClick = { picked = null }) { Text(stringResource(R.string.cancel)) } },
         )
     }
     renaming?.let { gym ->
-        GymDialog("Cambiar nombre", gym.name, emptyList(), onConfirm = {
+        GymDialog(stringResource(R.string.rename), gym.name, emptyList(), onConfirm = {
             vm.rename(gym.id, it)
             renaming = null
         }, onDismiss = { renaming = null })
@@ -437,21 +439,18 @@ fun GymsScreen(onOpen: (GymEntity) -> Unit, bottomBar: @Composable () -> Unit = 
     deleting?.let { gym ->
         AlertDialog(
             onDismissRequest = { deleting = null },
-            title = { Text("Quitar rocódromo") },
-            text = { Text("Se quita «${gym.name}». Sus paredes y bloques se conservan, sin rocódromo asignado.") },
+            title = { Text(stringResource(R.string.remove_gym)) },
+            text = { Text(stringResource(R.string.remove_gym_text, gym.name)) },
             confirmButton = {
                 TextButton(onClick = {
                     vm.delete(gym.id)
                     deleting = null
-                }) { Text("Quitar") }
+                }) { Text(stringResource(R.string.remove)) }
             },
-            dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancelar") } },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }
-
-/** "1 sesión", "3 sesiones". */
-private fun count(n: Int, one: String, many: String) = "$n ${if (n == 1) one else many}"
 
 private fun MapBounds.contains(point: GeoPoint) = point.latitude in south..north && point.longitude in west..east
 
@@ -496,29 +495,29 @@ private fun GymCard(
             Text(gym.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             val takenDown = boulders.size - current.size
             Text(
-                "${count(current.size, "bloque montado", "bloques montados")} · ${count(takenDown, "desmontado", "desmontados")}",
+                stringResource(R.string.joined, pluralStringResource(R.plurals.boulders_up, current.size, current.size), pluralStringResource(R.plurals.taken_down_count, takenDown, takenDown)),
                 color = Muted,
             )
             Text(
-                "${count(sent, "encadenado", "encadenados")} de ${boulders.size} · ${count(sessions, "sesión", "sesiones")}",
+                stringResource(R.string.gym_sent_of, pluralStringResource(R.plurals.sent_count, sent, sent), boulders.size, pluralStringResource(R.plurals.sessions_count, sessions, sessions)),
                 color = Muted,
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     when {
-                        gym.latitude == null -> "Sin ubicación: no se elige sola"
-                        distance != null -> "A $distance · se elige sola al escanear allí"
-                        else -> "Se elige sola al escanear allí"
+                        gym.latitude == null -> stringResource(R.string.gym_no_location)
+                        distance != null -> stringResource(R.string.gym_at_distance, distance)
+                        else -> stringResource(R.string.gym_auto)
                     },
                     Modifier.weight(1f),
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall,
                 )
                 IconButton(onClick = onLocate) {
-                    Icon(Icons.Default.MyLocation, contentDescription = "Guardar la ubicación actual como la de este rocódromo", tint = Muted)
+                    Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.save_current_location), tint = Muted)
                 }
-                IconButton(onClick = onRename) { Icon(Icons.Default.Edit, contentDescription = "Cambiar nombre", tint = Muted) }
-                IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, contentDescription = "Quitar rocódromo", tint = Muted) }
+                IconButton(onClick = onRename) { Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.rename), tint = Muted) }
+                IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.remove_gym), tint = Muted) }
             }
         }
     }

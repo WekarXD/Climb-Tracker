@@ -18,6 +18,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
 import com.climbtracker.core.tracker.GradeScale
 import com.climbtracker.core.tracker.Grades
+import androidx.compose.ui.res.stringResource
+import com.climbtracker.R
 
 /** Name, grade and optional notes. The notes field is hidden when [initialNotes] is null. */
 @Composable
@@ -48,11 +50,11 @@ fun BoulderDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nombre") },
+                    label = { Text(stringResource(R.string.name)) },
                     singleLine = true,
                 )
                 Box {
-                    OutlinedButton(onClick = { gradesOpen = true }) { Text("Grado: $grade") }
+                    OutlinedButton(onClick = { gradesOpen = true }) { Text(stringResource(R.string.grade_value, grade)) }
                     DropdownMenu(expanded = gradesOpen, onDismissRequest = { gradesOpen = false }) {
                         for (option in grades) {
                             DropdownMenuItem(
@@ -69,13 +71,13 @@ fun BoulderDialog(
                     OutlinedTextField(
                         value = notes,
                         onValueChange = { notes = it },
-                        label = { Text("Notas") },
+                        label = { Text(stringResource(R.string.notes)) },
                         minLines = 3,
                     )
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(name, grade, notes) }) { Text("Guardar") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        confirmButton = { TextButton(onClick = { onConfirm(name, grade, notes) }) { Text(stringResource(R.string.save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }

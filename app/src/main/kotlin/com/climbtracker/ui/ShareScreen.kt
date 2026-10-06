@@ -55,6 +55,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
+import androidx.compose.ui.res.stringResource
+import com.climbtracker.R
 
 /**
  * Full-screen preview of the picture about to be shared, with the choices that change it.
@@ -87,7 +89,7 @@ fun ShareScreen(
         Surface(Modifier.fillMaxSize(), color = Cream, contentColor = Ink) {
             Column(Modifier.systemBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = onClose) { Text("Cerrar", color = Terracotta, style = MaterialTheme.typography.titleMedium) }
+                    TextButton(onClick = onClose) { Text(stringResource(R.string.close), color = Terracotta, style = MaterialTheme.typography.titleMedium) }
                     Text(
                         title,
                         Modifier.padding(start = 8.dp),
@@ -102,14 +104,14 @@ fun ShareScreen(
                         if (preview == null) {
                             Spinner(color = Color.White)
                         } else {
-                            Image(preview.asImageBitmap(), contentDescription = "Imagen que se va a compartir", Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                            Image(preview.asImageBitmap(), contentDescription = stringResource(R.string.share_preview), Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                         }
                     }
                 }
                 Surface(shape = RoundedCornerShape(50), color = CardWhite, border = BorderStroke(1.dp, Hairline)) {
                     Row(Modifier.padding(4.dp)) {
-                        Choice(Icons.AutoMirrored.Filled.FormatAlignLeft, "Texto a la izquierda", !centred) { onCentred(false) }
-                        Choice(Icons.Default.FormatAlignCenter, "Texto centrado", centred) { onCentred(true) }
+                        Choice(Icons.AutoMirrored.Filled.FormatAlignLeft, stringResource(R.string.text_left), !centred) { onCentred(false) }
+                        Choice(Icons.Default.FormatAlignCenter, stringResource(R.string.text_centred), centred) { onCentred(true) }
                     }
                 }
                 Row(Modifier.padding(top = 12.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -124,7 +126,7 @@ fun ShareScreen(
                     ) {
                         Icon(if (ownPhoto) Icons.Default.Wallpaper else Icons.Default.PhotoLibrary, contentDescription = null, Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text(if (ownPhoto) "Ver la pared" else "Elegir foto", maxLines = 1)
+                        Text(if (ownPhoto) stringResource(R.string.see_wall) else stringResource(R.string.choose_photo), maxLines = 1)
                     }
                     Button(
                         onClick = onShare,
@@ -135,7 +137,7 @@ fun ShareScreen(
                     ) {
                         Icon(Icons.Default.Share, contentDescription = null, Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Compartir", fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.share), fontWeight = FontWeight.SemiBold)
                     }
                 }
             }

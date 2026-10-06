@@ -76,6 +76,11 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import com.climbtracker.R
+import androidx.compose.ui.platform.LocalResources
+import com.climbtracker.core.tracker.ColorName
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val climb = app as ClimbApp
@@ -87,7 +92,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val status = MutableStateFlow<BoulderStatus?>(null)
 
     /** Colour name to show, or null for every colour. */
-    val colour = MutableStateFlow<String?>(null)
+    val colour = MutableStateFlow<ColorName?>(null)
 
     /** Shows the boulders marked as taken down instead of the current ones. */
     val takenDown = MutableStateFlow(false)
@@ -104,11 +109,11 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 withContext(Dispatchers.IO) {
                     checkNotNull(climb.contentResolver.openOutputStream(uri)).use { climb.backup.export(it) }
                 }
-                "Copia de seguridad guardada."
+                climb.getString(R.string.backup_saved)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                "No se ha podido guardar la copia."
+                climb.getString(R.string.backup_save_failed)
             }
         }
     }
@@ -119,13 +124,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 withContext(Dispatchers.IO) {
                     checkNotNull(climb.contentResolver.openInputStream(uri)).use { climb.backup.import(it) }
                 }
-                "Copia de seguridad restaurada."
+                climb.getString(R.string.backup_restored)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: IllegalArgumentException) {
-                "El archivo no es una copia de seguridad de Climb Tracker. No se ha cambiado nada."
+                climb.getString(R.string.backup_not_ours)
             } catch (e: Exception) {
-                "No se ha podido leer el archivo."
+                climb.getString(R.string.file_unreadable)
             }
         }
     }
@@ -135,10 +140,6 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         gradeScale = scale
     }
 }
-
-private val SPANISH = Locale.forLanguageTag("es-ES")
-private val DAY_HEADER = DateTimeFormatter.ofPattern("d 'de' MMMM", SPANISH)
-private val DAY_SHORT = DateTimeFormatter.ofPattern("d MMM", SPANISH)
 
 private fun dayOf(millis: Long): LocalDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
 
@@ -167,6 +168,7 @@ fun HomeScreen(
     var menuOpen by remember { mutableStateOf(false) }
     var pendingImport by remember { mutableStateOf<Uri?>(null) }
     val context = LocalContext.current
+    val backupName = stringResource(R.string.backup_file_name)
     val exportBackup = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         if (uri != null) vm.exportTo(uri)
     }
@@ -183,21 +185,21 @@ fun HomeScreen(
     pendingImport?.let { uri ->
         AlertDialog(
             onDismissRequest = { pendingImport = null },
-            title = { Text("Restaurar copia de seguridad") },
-            text = { Text("Se sustituirán todos los bloques, intentos y fotos de la app por los de la copia. No se puede deshacer.") },
+            title = { Text(stringResource(R.string.restore_backup)) },
+            text = { Text(stringResource(R.string.restore_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     pendingImport = null
                     vm.importFrom(uri)
-                }) { Text("Restaurar") }
+                }) { Text(stringResource(R.string.restore)) }
             },
-            dismissButton = { TextButton(onClick = { pendingImport = null }) { Text("Cancelar") } },
+            dismissButton = { TextButton(onClick = { pendingImport = null }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 
-    val colours = all.groupBy { ColorNames.nameOf(it.color) }.map { (name, list) -> Triple(name, list.first().color, list.size) }
+    val colours = all.groupBy { ColorNames.of(it.color) }.map { (name, list) -> Triple(name, list.first().color, list.size) }
     val shown = all.filter {
-        (status == null || it.status == status) && (colour == null || ColorNames.nameOf(it.color) == colour)
+        (status == null || it.status == status) && (colour == null || ColorNames.of(it.color) == colour)
     }
     val sessions = shown.groupBy { dayOf(it.boulder.createdAt) }.toSortedMap(compareByDescending { it })
     val full: (androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope.() -> GridItemSpan) = { GridItemSpan(maxLineSpan) }
@@ -212,7 +214,7 @@ fun HomeScreen(
                 contentColor = Color.White,
                 shape = RoundedCornerShape(50),
                 icon = { Icon(Icons.Default.PhotoCamera, contentDescription = null) },
-                text = { Text("Escanear ruta", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium) },
+                text = { Text(stringResource(R.string.scan_route), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium) },
             )
         },
     ) { padding ->
@@ -233,27 +235,27 @@ fun HomeScreen(
                     )
                     Box(Modifier.align(Alignment.CenterEnd)) {
                         CircleButton(onClick = { menuOpen = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Ajustes")
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.settings))
                         }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                             DropdownMenuItem(
-                                text = { Text("Exportar copia de seguridad") },
+                                text = { Text(stringResource(R.string.export_backup)) },
                                 onClick = {
                                     menuOpen = false
-                                    exportBackup.launch("climb-tracker-copia.zip")
+                                    exportBackup.launch(backupName)
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text("Restaurar copia de seguridad") },
+                                text = { Text(stringResource(R.string.restore_backup)) },
                                 onClick = {
                                     menuOpen = false
                                     pickBackup.launch(arrayOf("application/zip", "application/octet-stream"))
                                 },
                             )
                             for (scale in GradeScale.entries) {
-                                val name = if (scale == GradeScale.FONT) "Escala Fontainebleau" else "Escala V"
+                                val name = if (scale == GradeScale.FONT) stringResource(R.string.scale_font) else stringResource(R.string.scale_v)
                                 DropdownMenuItem(
-                                    text = { Text(if (vm.gradeScale == scale) "✓ $name" else name) },
+                                    text = { Text(ticked(name, vm.gradeScale == scale)) },
                                     onClick = {
                                         vm.changeGradeScale(scale)
                                         menuOpen = false
@@ -268,7 +270,7 @@ fun HomeScreen(
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     for (option in BoulderStatus.entries) {
                         Pill(selected = status == option, onClick = { vm.status.value = if (status == option) null else option }) {
-                            Text(option.label(), style = MaterialTheme.typography.titleSmall)
+                            Text(stringResource(option.label()), style = MaterialTheme.typography.titleSmall)
                         }
                     }
                     if (gymId != null) {
@@ -278,7 +280,7 @@ fun HomeScreen(
                     }
                     if (anyTakenDown || takenDown) {
                         Pill(selected = takenDown, onClick = { vm.takenDown.value = !takenDown }) {
-                            Text("Desmontados", style = MaterialTheme.typography.titleSmall)
+                            Text(stringResource(R.string.taken_down_filter), style = MaterialTheme.typography.titleSmall)
                         }
                     }
                 }
@@ -290,7 +292,7 @@ fun HomeScreen(
                             Pill(
                                 selected = colour == name,
                                 onClick = { vm.colour.value = if (colour == name) null else name },
-                                description = if (count == 1) "$name, 1 bloque" else "$name, $count bloques",
+                                description = pluralStringResource(R.plurals.colour_boulders, count, stringResource(name.label()), count),
                             ) {
                                 ColorDot(argb, 16.dp)
                                 Spacer(Modifier.width(8.dp))
@@ -304,9 +306,9 @@ fun HomeScreen(
                 item(span = full) {
                     Text(
                         when {
-                            takenDown -> "Ningún bloque desmontado con estos filtros."
-                            everything.isEmpty() -> "Aún no tienes bloques.\nPulsa «Escanear ruta» para crear el primero."
-                            else -> "Ningún bloque con estos filtros."
+                            takenDown -> stringResource(R.string.none_taken_down)
+                            everything.isEmpty() -> stringResource(R.string.no_boulders_yet)
+                            else -> stringResource(R.string.none_with_filters)
                         },
                         modifier = Modifier.fillMaxWidth().padding(vertical = 64.dp),
                         textAlign = TextAlign.Center,
@@ -317,7 +319,7 @@ fun HomeScreen(
             for ((day, boulders) in sessions) {
                 item(span = full, key = "day-$day") {
                     Text(
-                        "Sesión del ${DAY_HEADER.format(day)}",
+                        stringResource(R.string.session_of, LocalResources.current.dayAndMonth(day)),
                         modifier = Modifier.padding(top = 8.dp),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
@@ -363,7 +365,7 @@ private fun BoulderCard(summary: BoulderSummary, onClick: () -> Unit) {
                     )
                 }
                 Text(
-                    listOfNotNull(summary.boulder.grade, summary.gymName, DAY_SHORT.format(dayOf(summary.boulder.createdAt))).joinToString(" · "),
+                    listOfNotNull(summary.boulder.grade, summary.gymName, LocalResources.current.shortDay(dayOf(summary.boulder.createdAt))).joinToString(" · "),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = Color.White.copy(alpha = 0.7f),

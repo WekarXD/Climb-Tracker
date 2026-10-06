@@ -51,6 +51,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.hypot
 import kotlin.math.roundToInt
+import androidx.compose.ui.res.stringResource
+import com.climbtracker.R
 
 class CropViewModel(app: Application) : AndroidViewModel(app) {
     private val climb = app as ClimbApp
@@ -65,7 +67,7 @@ class CropViewModel(app: Application) : AndroidViewModel(app) {
     init {
         viewModelScope.launch {
             bitmap = withContext(Dispatchers.IO) { climb.photos.imported(1280) }
-            if (bitmap == null) error = "No se ha podido leer la foto."
+            if (bitmap == null) error = climb.getString(R.string.photo_unreadable)
             busy = false
         }
     }
@@ -98,7 +100,7 @@ class CropViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             busy = false
-            if (wallId != null) onDone(wallId) else error = "No se ha podido procesar la foto."
+            if (wallId != null) onDone(wallId) else error = climb.getString(R.string.photo_failed)
         }
     }
 }
@@ -115,10 +117,10 @@ fun CropScreen(onDone: (Long) -> Unit, onBack: () -> Unit, vm: CropViewModel = v
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Encuadra la pared") },
+                title = { Text(stringResource(R.string.crop_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -129,10 +131,10 @@ fun CropScreen(onDone: (Long) -> Unit, onBack: () -> Unit, vm: CropViewModel = v
                         },
                         enabled = !vm.busy && bitmap != null,
                     ) {
-                        Text(if (perspective) "✓ Perspectiva" else "Perspectiva")
+                        Text(ticked(stringResource(R.string.perspective), perspective))
                     }
                     TextButton(onClick = { vm.confirm(crop, onDone) }, enabled = !vm.busy && bitmap != null) {
-                        Text("Detectar")
+                        Text(stringResource(R.string.detect))
                     }
                 },
             )
@@ -145,7 +147,7 @@ fun CropScreen(onDone: (Long) -> Unit, onBack: () -> Unit, vm: CropViewModel = v
             if (bitmap != null) CropCanvas(bitmap, crop, perspective, onChange = { crop = it })
             if (perspective && !vm.busy) {
                 Text(
-                    "Lleva cada esquina a una esquina de la pared.",
+                    stringResource(R.string.perspective_hint),
                     color = Color.White,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp),

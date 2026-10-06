@@ -117,7 +117,7 @@ class PhotoStore(private val context: Context) {
 
     /** Stores [bitmap] where other apps can be given read access to it, and returns its address. */
     fun shareUri(bitmap: Bitmap): Uri {
-        val file = File(File(context.cacheDir, "share"), "bloque.jpg")
+        val file = File(File(context.cacheDir, "share"), "climb-tracker.jpg")
         save(bitmap, file)
         return FileProvider.getUriForFile(context, AUTHORITY, file)
     }

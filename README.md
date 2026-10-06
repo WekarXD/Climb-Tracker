@@ -28,6 +28,8 @@ Los datos de las capturas son de ejemplo.
 - **Compartir** un bloque como imagen vertical: la foto con el circuito, el resultado en grande, el rocódromo, la fecha y los intentos. Se puede cambiar la foto por una tuya y elegir la alineación del texto.
 - **Copia de seguridad**: exporta todos los datos y fotos a un archivo y restáuralos en otro móvil.
 
+La app está en español y en inglés, según el idioma del móvil, y sigue su tema claro u oscuro.
+
 ## Instalación
 
 Descarga el APK de la [última release](https://github.com/WekarXD/Climb-Tracker/releases/latest) y ábrelo en un móvil con Android 8.0 o superior y procesador ARM de 64 bits, que son casi todos los vendidos desde 2017. En un móvil de 32 bits o en un emulador x86 no se instala. Hay que permitir la instalación de apps de origen desconocido.

@@ -3,12 +3,14 @@ package com.climbtracker.ui
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.climbtracker.ClimbApp
+import com.climbtracker.R
 import com.climbtracker.core.detection.Bounds
 import com.climbtracker.core.detection.DetectedHold
 import com.climbtracker.core.detection.DetectionResult
@@ -27,12 +29,12 @@ import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
 /**
- * Draws the main screens with made-up data, in the light and the dark theme. The pictures are
+ * Draws the main screens with made-up data, in the light and the dark theme and in both languages. The pictures are
  * left in `app/build/screens/` to be looked at after any change to the look; the test itself
  * only checks that the screens can be drawn.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34], application = ClimbApp::class, qualifiers = "w411dp-h891dp-xxhdpi")
+@Config(sdk = [34], application = ClimbApp::class, qualifiers = "es-w411dp-h891dp-xxhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ScreensRenderTest {
 
@@ -78,20 +80,23 @@ class ScreensRenderTest {
         File(dir, "$name.png").outputStream().use { picture.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
-    private fun draw(dark: Boolean) {
-        val suffix = if (dark) "oscuro" else "claro"
+    private fun draw(dark: Boolean, suffix: String) {
         compose.setContent { ClimbTheme(dark = dark) { MainTabs(onNew = {}, onOpen = {}) } }
-        compose.waitUntil(10_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Amarillo")).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(10_000) { compose.onAllNodes(hasText("Amarillo")).fetchSemanticsNodes().isNotEmpty() }
         save("proyectos-$suffix")
-        compose.onNodeWithText("Perfil").performClick()
+        compose.onNodeWithText(app.getString(R.string.tab_profile)).performClick()
         save("perfil-$suffix")
     }
 
     @Test
-    fun drawsTheMainScreensInTheLightTheme() = draw(dark = false)
+    fun drawsTheMainScreensInTheLightTheme() = draw(dark = false, "claro")
 
     @Test
-    fun drawsTheMainScreensInTheDarkTheme() = draw(dark = true)
+    fun drawsTheMainScreensInTheDarkTheme() = draw(dark = true, "oscuro")
+
+    @Test
+    @Config(qualifiers = "en-w411dp-h891dp-xxhdpi")
+    fun drawsTheMainScreensInEnglish() = draw(dark = false, "ingles")
 
     private companion object {
         const val YELLOW = 0xFFE8C020.toInt()

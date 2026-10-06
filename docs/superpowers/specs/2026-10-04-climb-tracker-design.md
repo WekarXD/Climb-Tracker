@@ -504,6 +504,14 @@ El paso de recorte tiene un modo «Perspectiva» en el que cada esquina se mueve
 de guardar la foto y detectar, de modo que una pared fotografiada de lado o desde abajo queda
 como vista de frente. Con el modo apagado el recorte es el rectángulo de siempre.
 
+### Idiomas
+
+Los textos están en recursos: inglés por defecto (`res/values`) y español (`res/values-es`). Las
+fechas y los números se escriben en el idioma de los textos, no en el del teléfono
+(`ui/Texts.kt`). Las estadísticas siguen agrupando por el nombre del color en español, que se
+traduce al mostrarlo. El nombre por defecto «Bloque N» del DAO no se traduce: solo se usa si el
+editor no aporta nombre, y el editor siempre aporta el del color.
+
 ### Publicación
 
 Icono adaptativo propio. Las versiones se compilan y publican con GitHub Actions al empujar una

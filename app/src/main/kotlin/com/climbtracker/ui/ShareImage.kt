@@ -28,6 +28,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.Canvas as ComposeCanvas
+import com.climbtracker.R
+import android.content.res.Resources
 
 /** The words on the picture shared for a boulder. */
 data class ShareCard(
@@ -46,13 +48,13 @@ data class ShareCard(
 class Cover(val scale: Float, val dx: Float, val dy: Float)
 
 object ShareCards {
-    private val DAY = DateTimeFormatter.ofPattern("d 'DE' MMMM", Locale.forLanguageTag("es-ES"))
 
     /**
      * [attempts] are the date and result of each one, oldest first. The date shown is that of the
      * send, or of the last attempt, or failing those the day the boulder was saved.
      */
     fun build(
+        resources: Resources,
         name: String,
         grade: String,
         gym: String?,
@@ -70,20 +72,20 @@ object ShareCards {
             else -> createdAt
         }
         return ShareCard(
-            date = DAY.format(Instant.ofEpochMilli(moment).atZone(zone)).uppercase(Locale.forLanguageTag("es-ES")),
+            date = resources.dayAndMonth(Instant.ofEpochMilli(moment).atZone(zone)).uppercase(resources.textLocale()),
             gym = gym?.takeIf { it.isNotBlank() },
             headline = when (status) {
                 BoulderStatus.FLASH -> "FLASH"
-                BoulderStatus.SENT -> "ENCADENADO"
+                BoulderStatus.SENT -> resources.getString(R.string.share_sent)
                 BoulderStatus.PROJECT -> "${(best * 100).roundToInt()} %"
             },
-            tagline = if (status == BoulderStatus.PROJECT) "EN PROYECTO" else null,
+            tagline = if (status == BoulderStatus.PROJECT) resources.getString(R.string.share_project) else null,
             colour = colour,
             title = listOf(name, grade).filter { it.isNotBlank() }.joinToString(" \u00b7 "),
             attempts = if (sendIndex >= 0) {
-                "${ordinal(sendIndex + 1)} intento"
+                resources.attemptNumber(sendIndex + 1)
             } else {
-                "${attempts.size} ${if (attempts.size == 1) "intento" else "intentos"}"
+                resources.getQuantityString(R.plurals.attempts_count, attempts.size, attempts.size)
             },
         )
     }

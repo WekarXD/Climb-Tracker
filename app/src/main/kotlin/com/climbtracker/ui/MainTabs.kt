@@ -33,6 +33,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.climbtracker.R
 
 /** The two top-level screens, switched with the bottom bar. */
 @Composable
@@ -74,9 +76,9 @@ private fun MainBottomBar(selected: Int, onSelect: (Int) -> Unit) {
             shadowElevation = 2.dp,
         ) {
             Row(Modifier.padding(4.dp).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Tab("Proyectos", Icons.AutoMirrored.Filled.Assignment, selected == 0, Modifier.weight(1f)) { onSelect(0) }
-                Tab("Rocódromos", Icons.Default.Place, selected == 1, Modifier.weight(1f)) { onSelect(1) }
-                Tab("Perfil", Icons.Default.Person, selected == 2, Modifier.weight(1f)) { onSelect(2) }
+                Tab(stringResource(R.string.tab_projects), Icons.AutoMirrored.Filled.Assignment, selected == 0, Modifier.weight(1f)) { onSelect(0) }
+                Tab(stringResource(R.string.tab_gyms), Icons.Default.Place, selected == 1, Modifier.weight(1f)) { onSelect(1) }
+                Tab(stringResource(R.string.tab_profile), Icons.Default.Person, selected == 2, Modifier.weight(1f)) { onSelect(2) }
             }
         }
     }

@@ -60,6 +60,10 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.max
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import com.climbtracker.R
+import androidx.compose.ui.platform.LocalResources
 
 class ProfileViewModel(app: Application) : AndroidViewModel(app) {
     private val climb = app as ClimbApp
@@ -91,7 +95,6 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
     var gym by mutableStateOf<Long?>(null)
 }
 
-private val RECORD_DAY = DateTimeFormatter.ofPattern("d 'de' MMMM", Locale.forLanguageTag("es-ES"))
 private val SendTint: Color @Composable get() = LocalPalette.current.sendTint
 private val TriedTint: Color @Composable get() = if (LocalPalette.current.dark) LocalPalette.current.terracottaTint else Color(0xFFF1D9CB)
 
@@ -114,12 +117,12 @@ fun ProfileScreen(bottomBar: @Composable () -> Unit = {}, vm: ProfileViewModel =
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item { Text("Perfil", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold) }
+            item { Text(stringResource(R.string.tab_profile), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold) }
             item { PeriodHeader(period, onSelect = { vm.period = it }) }
             if (gyms.isNotEmpty()) {
                 item {
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Pill(selected = vm.gym == null, onClick = { vm.gym = null }) { Text("Todos") }
+                        Pill(selected = vm.gym == null, onClick = { vm.gym = null }) { Text(stringResource(R.string.all)) }
                         for (gym in gyms) {
                             Pill(selected = vm.gym == gym.id, onClick = { vm.gym = gym.id }) { Text(gym.name) }
                         }
@@ -128,19 +131,19 @@ fun ProfileScreen(bottomBar: @Composable () -> Unit = {}, vm: ProfileViewModel =
             }
             item { SummaryCard(summary, previous) }
 
-            item { SectionTitle("Volumen de entrenamiento") }
+            item { SectionTitle(stringResource(R.string.training_volume)) }
             item { VolumeChart(Stats.volumeByWeekday(boulders, span)) }
 
-            item { SectionTitle("Por color") }
+            item { SectionTitle(stringResource(R.string.by_colour)) }
             item { Card { if (colours.isEmpty()) Empty() else ColourBars(colours) } }
 
-            item { SectionTitle("Por grado") }
+            item { SectionTitle(stringResource(R.string.by_grade)) }
             item { Card { if (grades.isEmpty()) Empty() else GradeRows(grades) } }
 
-            item { SectionTitle("Constancia") }
+            item { SectionTitle(stringResource(R.string.consistency)) }
             item { Card { Consistency(Stats.consistency(boulders, today), Stats.weekStreak(boulders, today)) } }
 
-            item { SectionTitle("Récords") }
+            item { SectionTitle(stringResource(R.string.records)) }
             item { Card { RecordRows(Stats.records(boulders)) } }
         }
     }
@@ -149,10 +152,10 @@ fun ProfileScreen(bottomBar: @Composable () -> Unit = {}, vm: ProfileViewModel =
 @Composable
 private fun PeriodHeader(period: StatsPeriod, onSelect: (StatsPeriod) -> Unit) {
     val (title, versus) = when (period) {
-        StatsPeriod.WEEK -> "ESTA SEMANA" to "VS SEMANA ANTERIOR"
-        StatsPeriod.MONTH -> "ESTE MES" to "VS MES ANTERIOR"
-        StatsPeriod.YEAR -> "ESTE AÑO" to "VS AÑO ANTERIOR"
-        StatsPeriod.ALL -> "DESDE SIEMPRE" to ""
+        StatsPeriod.WEEK -> stringResource(R.string.this_week) to stringResource(R.string.vs_last_week)
+        StatsPeriod.MONTH -> stringResource(R.string.this_month) to stringResource(R.string.vs_last_month)
+        StatsPeriod.YEAR -> stringResource(R.string.this_year) to stringResource(R.string.vs_last_year)
+        StatsPeriod.ALL -> stringResource(R.string.all_time) to ""
     }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
@@ -162,7 +165,8 @@ private fun PeriodHeader(period: StatsPeriod, onSelect: (StatsPeriod) -> Unit) {
         Surface(shape = RoundedCornerShape(50), color = CardWhite, border = BorderStroke(1.dp, Hairline)) {
             Row(Modifier.padding(3.dp)) {
                 for ((option, label) in listOf(
-                    StatsPeriod.WEEK to "S", StatsPeriod.MONTH to "M", StatsPeriod.YEAR to "A", StatsPeriod.ALL to "Todo",
+                    StatsPeriod.WEEK to stringResource(R.string.period_week_short), StatsPeriod.MONTH to stringResource(R.string.period_month_short),
+                    StatsPeriod.YEAR to stringResource(R.string.period_year_short), StatsPeriod.ALL to stringResource(R.string.period_all_short),
                 )) {
                     val selected = option == period
                     Box(
@@ -188,7 +192,7 @@ private fun SummaryCard(now: PeriodSummary, before: PeriodSummary?) {
             Box(Modifier.width(1.dp).fillMaxHeight().background(Hairline))
             SummaryCell("FLASHES", now.flashes, before?.flashes, Modifier.weight(1f))
             Box(Modifier.width(1.dp).fillMaxHeight().background(Hairline))
-            SummaryCell("SESIONES", now.sessions, before?.sessions, Modifier.weight(1f))
+            SummaryCell(stringResource(R.string.sessions_caps_many), now.sessions, before?.sessions, Modifier.weight(1f))
         }
     }
 }
@@ -244,7 +248,7 @@ private fun Card(content: @Composable () -> Unit) {
 
 @Composable
 private fun Empty() {
-    Text("Sin datos en este periodo.", color = Muted)
+    Text(stringResource(R.string.no_data), color = Muted)
 }
 
 /** One column per weekday: the pale bar is boulders tried, the solid part those topped. */
@@ -284,7 +288,7 @@ private fun VolumeChart(volume: List<DayVolume>) {
                     }
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "LMXJVSD"[index].toString(),
+                        stringResource(R.string.weekday_initials)[index].toString(),
                         color = if (day.tried > 0) Ink else Muted,
                         style = MaterialTheme.typography.labelMedium,
                     )
@@ -293,9 +297,9 @@ private fun VolumeChart(volume: List<DayVolume>) {
         }
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Legend(TriedTint, "${volume.sumOf { it.tried }} intentados")
+            Legend(TriedTint, stringResource(R.string.tried_count, volume.sumOf { it.tried }))
             Spacer(Modifier.width(16.dp))
-            Legend(Terracotta, "${volume.sumOf { it.topped }} encadenados")
+            Legend(Terracotta, stringResource(R.string.sent_count_legend, volume.sumOf { it.topped }))
         }
     }
 }
@@ -340,7 +344,7 @@ private fun ColourBars(buckets: List<Bucket>) {
                 }
                 Spacer(Modifier.height(6.dp))
                 ColorDot(bucket.color, 10.dp)
-                Text(bucket.label, color = Muted, style = MaterialTheme.typography.labelSmall)
+                Text(colourLabel(bucket.label), color = Muted, style = MaterialTheme.typography.labelSmall)
             }
         }
     }
@@ -388,11 +392,7 @@ private fun Consistency(weeks: List<List<Boolean>>, streak: Int) {
         }
         Spacer(Modifier.height(12.dp))
         Text(
-            when (streak) {
-                0 -> "Sin racha de semanas todavía."
-                1 -> "1 semana seguida con sesión."
-                else -> "$streak semanas seguidas con sesión."
-            },
+            if (streak == 0) stringResource(R.string.no_streak) else pluralStringResource(R.plurals.streak_weeks, streak, streak),
             color = Muted,
         )
     }
@@ -404,13 +404,13 @@ private fun RecordRows(records: Records) {
     val most = records.mostAttempts
     val best = records.bestSession
     if (hardest == null && most == null && best == null) {
-        Text("Registra intentos para ver tus récords.", color = Muted)
+        Text(stringResource(R.string.log_for_records), color = Muted)
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (hardest != null) RecordRow("Grado más alto encadenado", hardest)
-        if (best != null) RecordRow("Mejor sesión", "${best.second} tops · ${RECORD_DAY.format(best.first)}")
-        if (most != null) RecordRow("Bloque más peleado", "${most.first} · ${most.second} intentos")
+        if (hardest != null) RecordRow(stringResource(R.string.hardest_send), hardest)
+        if (best != null) RecordRow(stringResource(R.string.best_session), stringResource(R.string.best_session_value, best.second, LocalResources.current.dayAndMonth(best.first)))
+        if (most != null) RecordRow(stringResource(R.string.most_fought), stringResource(R.string.joined, most.first, pluralStringResource(R.plurals.attempts_count, most.second, most.second)))
     }
 }
 

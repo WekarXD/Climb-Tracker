@@ -44,6 +44,8 @@ import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import androidx.compose.ui.res.stringResource
+import com.climbtracker.R
 
 private const val PILL_BACKGROUND = 0xE61C1917.toInt()
 
@@ -198,7 +200,7 @@ fun WallPreview(
             contentAlignment = Alignment.Center,
         ) {
             // result == null means still loading; an empty box avoids a flash of the error text.
-            if (result != null) Text("Imagen no disponible", color = Color.White)
+            if (result != null) Text(stringResource(R.string.image_unavailable), color = Color.White)
         }
         return
     }
