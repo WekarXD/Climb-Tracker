@@ -37,37 +37,14 @@ import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.Point
 
-/** Where the map comes from: drawn on the phone from OpenFreeMap's data, or OpenStreetMap's own pictures. */
-private const val VECTOR = true
-
 /** Credit the map shows at all times, and the whole of it, shown when that is touched. */
 const val MAP_CREDIT_SHORT = "© OpenStreetMap"
 const val MAP_CREDIT = "OpenFreeMap © OpenMapTiles · © OpenStreetMap"
 
+/** The map is drawn on the phone from OpenFreeMap's data, starting from its plainest styles. */
 private const val OPEN_FREE_MAP = "https://tiles.openfreemap.org/styles/"
 
-/**
- * OpenStreetMap's map as pictures, washed out to pale greys so that roads and names stay
- * readable but only the gyms stand out; turned over to dark greys for the dark theme.
- */
-private fun pictureStyle(dark: Boolean): String {
-    val background = if (dark) "#201e1c" else "#f1f0ee"
-    val paint = if (dark) {
-        """"raster-saturation":-1,"raster-brightness-min":0.75,"raster-brightness-max":0.12"""
-    } else {
-        """"raster-saturation":-0.8,"raster-brightness-min":0.4,"raster-brightness-max":1"""
-    }
-    return """{"version":8,
-        "sources":{"osm":{"type":"raster","tiles":["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],"tileSize":256,"maxzoom":19}},
-        "layers":[{"id":"background","type":"background","paint":{"background-color":"$background"}},
-                  {"id":"osm","type":"raster","source":"osm","paint":{$paint}}]}"""
-}
-
-private fun style(dark: Boolean): Style.Builder = if (VECTOR) {
-    Style.Builder().fromUri(OPEN_FREE_MAP + if (dark) "dark" else "positron")
-} else {
-    Style.Builder().fromJson(pictureStyle(dark))
-}
+private fun style(dark: Boolean): Style.Builder = Style.Builder().fromUri(OPEN_FREE_MAP + if (dark) "dark" else "positron")
 
 /** A marker on the map. [own] ones are the user's gyms; [key] says what it stands for. */
 data class MapPin(val point: GeoPoint, val title: String, val own: Boolean, val key: Any)
@@ -142,10 +119,55 @@ private fun features(pins: List<MapPin>): FeatureCollection = FeatureCollection.
     },
 )
 
+/** The data every layer is drawn from, as OpenFreeMap's styles name it. */
+private const val DATA = "openmaptiles"
+
+private fun oneOf(property: String, vararg values: String): Expression =
+    Expression.any(*values.map { Expression.eq(Expression.get(property), Expression.literal(it)) }.toTypedArray())
+
+private fun name(language: String): Expression =
+    Expression.coalesce(Expression.get("name:$language"), Expression.get("name:latin"), Expression.get("name"))
+
 /**
- * Fits a style drawn on the phone to the app: place names in the language of the app where the
- * map has them, quieter lettering, and for the dark theme the warm dark tones of the app with
- * streets that can be told from the ground.
+ * What the plain styles leave out and helps to find one's way to a gym: meadows, the names of
+ * parks, summits, and places worth a visit. Woods and parks, which they barely tint, get a
+ * shade that can be seen.
+ */
+private fun enrich(style: Style, dark: Boolean, language: String) {
+    val meadow = FillLayer("ct_meadow", DATA).apply {
+        sourceLayer = "landcover"
+        setFilter(oneOf("class", "grass", "wetland"))
+        setProperties(PropertyFactory.fillColor(if (dark) "#22271f" else "#e9eee1"))
+    }
+    if (style.getLayer("landcover_wood") != null) style.addLayerAbove(meadow, "landcover_wood") else style.addLayer(meadow)
+    (style.getLayer("landcover_wood") as? FillLayer)?.setProperties(PropertyFactory.fillColor(if (dark) "#1f271f" else "#dde6d6"), PropertyFactory.fillOpacity(1f))
+    (style.getLayer("park") as? FillLayer)?.setProperties(PropertyFactory.fillColor(if (dark) "#1d241d" else "#e4ecdd"), PropertyFactory.fillOpacity(1f))
+
+    fun label(id: String, layer: String, from: Float, size: Float, text: Expression, filter: Expression? = null) = SymbolLayer(id, DATA).apply {
+        sourceLayer = layer
+        minZoom = from
+        if (filter != null) setFilter(filter)
+        setProperties(
+            PropertyFactory.textField(text),
+            PropertyFactory.textFont(arrayOf("Noto Sans Italic")),
+            PropertyFactory.textSize(size),
+            PropertyFactory.textMaxWidth(8f),
+            PropertyFactory.textHaloWidth(1.2f),
+        )
+        style.addLayer(this)
+    }
+    label("ct_park", "park", 8f, 11f, name(language))
+    label("ct_peak", "mountain_peak", 10f, 11f, Expression.concat(Expression.literal("▲ "), name(language)))
+    label(
+        "ct_sight", "poi", 12f, 11f, name(language),
+        oneOf("class", "attraction", "museum", "castle", "park", "campsite", "stadium"),
+    )
+}
+
+/**
+ * Fits the style to the app: place names in the language of the app where the map has them,
+ * quieter lettering, and for the dark theme the warm dark tones of the app, with streets that
+ * can be told from the ground once close enough to matter.
  */
 private fun tune(style: Style, dark: Boolean, language: String) {
     for (layer in style.layers) {
@@ -154,20 +176,14 @@ private fun tune(style: Style, dark: Boolean, language: String) {
                 val field = layer.textField
                 val current = field.expression?.toString() ?: field.value?.toString().orEmpty()
                 // Road numbers and the like are left as they are.
-                if ("name" in current) {
-                    layer.setProperties(
-                        PropertyFactory.textField(
-                            Expression.coalesce(Expression.get("name:$language"), Expression.get("name:latin"), Expression.get("name")),
-                        ),
-                    )
-                }
+                if ("name" in current && !layer.id.startsWith("ct_")) layer.setProperties(PropertyFactory.textField(name(language)))
                 layer.setProperties(
                     PropertyFactory.textColor(if (dark) "#cfc7be" else "#5c554e"),
                     PropertyFactory.textHaloColor(if (dark) "#1c1a18" else "#ffffff"),
                 )
             }
             is BackgroundLayer -> if (dark) layer.setProperties(PropertyFactory.backgroundColor("#1c1a18"))
-            is FillLayer -> if (dark) {
+            is FillLayer -> if (dark && !layer.id.startsWith("ct_") && layer.id != "park" && layer.id != "landcover_wood") {
                 layer.setProperties(
                     PropertyFactory.fillColor(
                         when (layer.sourceLayer) {
@@ -179,16 +195,21 @@ private fun tune(style: Style, dark: Boolean, language: String) {
                 )
             }
             is LineLayer -> if (dark) {
-                layer.setProperties(
-                    PropertyFactory.lineColor(
-                        when (layer.sourceLayer) {
-                            "transportation" -> "#5e5851"
-                            "boundary" -> "#7d746a"
-                            "waterway" -> "#10161b"
-                            else -> "#3b3632"
-                        },
-                    ),
-                )
+                when (layer.sourceLayer) {
+                    // Seen from afar the road network would cover the country: it comes up with the zoom.
+                    "transportation" -> layer.setProperties(
+                        PropertyFactory.lineColor(
+                            Expression.interpolate(
+                                Expression.linear(), Expression.zoom(),
+                                Expression.stop(5, Expression.rgb(46, 42, 39)),
+                                Expression.stop(11, Expression.rgb(94, 88, 81)),
+                            ),
+                        ),
+                    )
+                    "boundary" -> layer.setProperties(PropertyFactory.lineColor("#7d746a"))
+                    "waterway" -> layer.setProperties(PropertyFactory.lineColor("#1b2a35"))
+                    else -> layer.setProperties(PropertyFactory.lineColor("#3b3632"))
+                }
             }
             else -> Unit
         }
@@ -198,7 +219,8 @@ private fun tune(style: Style, dark: Boolean, language: String) {
 /** Loads the style for the theme and puts the pins on it. */
 private fun dress(map: MapLibreMap, shown: Shown) {
     map.setStyle(style(shown.dark)) { loaded ->
-        if (VECTOR) tune(loaded, shown.dark, shown.language)
+        enrich(loaded, shown.dark, shown.language)
+        tune(loaded, shown.dark, shown.language)
         shown.ownPin?.let { loaded.addImage(OWN, it) }
         shown.foundPin?.let { loaded.addImage(FOUND, it) }
         loaded.addSource(GeoJsonSource(PINS, features(shown.pins)))

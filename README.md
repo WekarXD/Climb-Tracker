@@ -70,7 +70,7 @@ Las presas y sus colores se encuentran con visión clásica por color; un modelo
 ## Privacidad
 
 - La app no tiene cuenta, anuncios ni analítica, y no envía tus bloques ni tus fotos a ningún sitio.
-- **Internet** solo lo usa la pestaña de rocódromos: el mapa descarga sus teselas de OpenStreetMap y las búsquedas consultan Nominatim, Photon y Overpass, que reciben el texto buscado o la zona del mapa.
+- **Internet** solo lo usa la pestaña de rocódromos: el mapa descarga sus datos de OpenFreeMap y las búsquedas consultan Nominatim, Photon y Overpass, que reciben el texto buscado o la zona del mapa.
 - **Ubicación**: se pide una sola vez, al asignar un rocódromo, y es opcional. Se usa para saber en qué rocódromo estás y para ordenar por distancia; solo se guarda la posición de cada rocódromo, en el teléfono y en tu copia de seguridad.
 
 ## Estructura del proyecto
@@ -140,7 +140,7 @@ El flujo `CI` ejecuta los mismos tests y lint en cada cambio de `main` y en cada
 
 ## Tecnología
 
-Kotlin, Jetpack Compose (Material 3), Room, Navigation Compose, osmdroid para el mapa y ONNX Runtime para el modelo de segmentación. Tests con `kotlin.test` en `core` y Robolectric para la base de datos, la copia de seguridad y la búsqueda de rocódromos.
+Kotlin, Jetpack Compose (Material 3), Room, Navigation Compose, MapLibre para el mapa y ONNX Runtime para el modelo de segmentación. Tests con `kotlin.test` en `core` y Robolectric para la base de datos, la copia de seguridad y la búsqueda de rocódromos.
 
 ## Estado y planes
 
@@ -154,7 +154,8 @@ Usa piezas de terceros, cada una con su propia licencia:
 
 - **MobileSAM**, el modelo de segmentación que descarga la compilación: Apache-2.0.
 - **ONNX Runtime**, que lo ejecuta en el móvil: MIT.
-- **osmdroid**, el visor del mapa: Apache-2.0.
+- **MapLibre Native**, el visor del mapa: BSD de 2 cláusulas.
+- **OpenFreeMap** sirve el mapa y **OpenMapTiles** define su formato y los estilos de los que parte (BSD de 3 cláusulas el código, CC-BY 4.0 el diseño).
 - **OpenStreetMap**: los datos del mapa y de las búsquedas son © los colaboradores de OpenStreetMap, bajo ODbL.
 - **Jetpack Compose, Room y el resto de AndroidX**: Apache-2.0.
 

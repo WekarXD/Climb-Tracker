@@ -112,7 +112,7 @@ dependencies {
     // Runs the segmentation model that draws the outline of the holds.
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.30.0")
 
-    // OpenStreetMap map view, for finding gyms.
+    // Map view for finding gyms; it draws OpenStreetMap data served by OpenFreeMap.
     implementation("org.maplibre.gl:android-sdk:13.6.1")
 
     implementation("androidx.room:room-runtime:2.8.5")

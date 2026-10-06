@@ -488,8 +488,13 @@ elige el rocódromo a menos de 400 m (más el margen de error de la posición, h
 hay ninguno, el último usado. La posición se lee con `LocationManager`, sin servicios de Google,
 y el permiso se pide una sola vez, al asignar un rocódromo. Base de datos en versión 5.
 
-La pestaña «Rocódromos» lleva arriba un mapa (biblioteca osmdroid, teselas de OpenStreetMap
-aclaradas a grises y dibujadas algo ampliadas para que tengan menos detalle) con los rocódromos propios
+La pestaña «Rocódromos» lleva arriba un mapa (biblioteca MapLibre Native, que sustituye a
+osmdroid, ya sin mantenimiento). El mapa es vectorial: se dibuja en el móvil con los datos de
+OpenStreetMap que sirve OpenFreeMap, sin clave. Parte de sus estilos más sobrios («positron» y
+«dark») y `ui/GymMap.kt` los adapta al cargarlos: nombres en el idioma de la app, tonos de la
+app en el tema oscuro, y las referencias que esos estilos omiten (prados, nombres de parques,
+cumbres y lugares de interés). Los nombres de parajes que no son población ni parque no están
+en esos datos. El crédito visible es «© OpenStreetMap ⓘ» y al tocarlo se despliega el completo) con los rocódromos propios
 y los encontrados. Se busca por nombre entre los lugares con `leisure=sports_centre`,
 los más cercanos al centro del mapa primero, preguntando a la vez a Nominatim (inmediato, pero
 solo nombres completos) y a Photon (encuentra parte del nombre, pero puede tardar medio minuto) o por la zona visible
