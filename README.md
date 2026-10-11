@@ -148,7 +148,9 @@ Proyecto personal en desarrollo; la versión estable es la de la [última releas
 
 ## Licencia
 
-El código de este repositorio se publica bajo la [licencia MIT](LICENSE).
+El código de este repositorio se publica bajo la licencia [PolyForm Noncommercial 1.0.0](LICENSE): se puede usar, estudiar, modificar y compartir para fines no comerciales. Cualquier uso comercial, como publicar la app con anuncios o venderla, necesita permiso del autor.
+
+Lo publicado antes de este cambio, hasta la versión 2.4.0 incluida, salió bajo la licencia MIT, que sigue valiendo para ese código.
 
 Usa piezas de terceros, cada una con su propia licencia:
 
