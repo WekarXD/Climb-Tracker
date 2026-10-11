@@ -49,23 +49,32 @@ Sale mejor con una foto de frente a un tramo de pared, sin gente delante.
 
 ## Cómo detecta las presas
 
-Las presas y sus colores se encuentran con visión clásica por color; un modelo de segmentación local afina después los contornos. Todo ocurre en el móvil, sin conexión.
+Tres piezas, todas en el móvil y sin conexión:
 
-1. Estima el **fondo local** de cada zona con una mediana de ventana grande, de modo que una pared con paneles claros y oscuros se trata bien.
-2. Marca como presa lo que se aparta de su fondo en color, o lo suficiente en luminosidad. El umbral de luminosidad es asimétrico: más sensible a lo oscuro sobre claro (presas grises) que a lo claro sobre oscuro (magnesio en paneles negros).
+1. Un **modelo de detección** (YOLOX), entrenado con fotos de rocódromos, encuentra las presas y los volúmenes y da una caja para cada uno.
+2. Un **modelo de segmentación** (MobileSAM) dibuja la silueta de cada presa dentro de su caja.
+3. El **color** de cada presa se mide sobre sus propios píxeles, dando más peso a los más vivos para que el magnesio y la sombra no lo apaguen. Las presas del mismo tono forman un color de la paleta; negras, grises y blancas van aparte.
+
+El control de sensibilidad del editor sube o baja lo seguro que tiene que estar el modelo para dar algo por presa.
+
+### El detector por color
+
+Antes del modelo, las presas se encontraban con visión clásica por color. Ese detector sigue en la app: es el que actúa si un modelo no puede ejecutarse en el teléfono, y el que crea una presa al mantener pulsado donde no se detectó ninguna.
+
+1. Estima el **fondo local** de cada zona con una mediana de ventana grande, de modo que una pared con paneles claros y oscuros se trata bien. Una presa más grande que esa ventana se confundiría con el fondo, así que el color se compara también con el de una ventana tres veces mayor.
+2. Marca como presa lo que se aparta de su fondo en color, o lo suficiente en luminosidad. El umbral de luminosidad es asimétrico: más sensible a lo oscuro sobre claro (presas grises) que a lo claro sobre oscuro (magnesio en paneles negros). Una presa blanca sobre panel oscuro se completa desde su lado iluminado hacia el que queda en sombra.
 3. Agrupa los colores para formar la paleta y separa las presas vecinas de distinto color. Una presa de color absorbe los píxeles vecinos de su mismo tono aunque estén apagados por la sombra o el magnesio.
 4. Une los trozos contiguos del mismo material, como las caras de un volumen.
 5. Descarta lo demasiado pequeño, lo demasiado grande y los restos de pared en las juntas entre paneles.
 6. Descarta lo que no es presa por su entorno: tornillos y brillos dentro de una presa, y las filas de letras pintadas en un panel.
 7. Busca aparte las presas del color de la pared, que por color no se ven: las delata su relieve, porque la sombra dibuja casi todo su contorno.
-8. Redibuja el contorno de cada presa con un modelo de segmentación (MobileSAM) que se ejecuta en el móvil: se le indica dónde está la presa y devuelve su silueta. Los colores siguen siendo los del detector.
 
 ### Limitaciones conocidas
 
-- Las presas del color de la pared (gris claro o blancas sobre pared clara) se detectan por su sombra, con un contorno aproximado que a veces abarca una presa vecina. Si alguna no sale, se añade con pulsación larga.
-- Rejillas, personas, pegatinas y algún borde de panel pueden salir marcados como presa.
+- Algún agujero de tornillo vacío, alguna etiqueta de vía o una presa muy pequeña pueden salir marcados de más; se quitan con pulsación larga.
+- Los volúmenes muy grandes pueden quedar sin silueta o sin detectar.
 - Las fotos con perspectiva muy forzada empeoran el resultado, aunque se enderecen al encuadrar: las presas lejanas quedan con menos detalle.
-- Los umbrales están ajustados con fotos de un solo rocódromo. El control de sensibilidad del editor permite corregirlo en otras condiciones de luz.
+- La calidad está medida con fotos de un solo rocódromo. El modelo se entrenó con fotos de muchos otros, pero no hay cifras propias de cómo responde en ellos.
 
 ## Privacidad
 
@@ -99,7 +108,7 @@ Requisitos: JDK 17 y el Android SDK con sus licencias aceptadas. La compilación
 sdk.dir=C\:\\Users\\tu-usuario\\Android\\Sdk
 ```
 
-La compilación descarga también los dos modelos de segmentación (unos 32 MB) a `app/src/main/assets`. No están en el repositorio: van adjuntos a la release `models-1`. Solo ocurre la primera vez o cuando cambia el modelo.
+La compilación descarga también los tres modelos (unos 42 MB) a `app/src/main/assets`. No están en el repositorio: van adjuntos a la release `models-2`. Solo ocurre la primera vez o cuando cambia el modelo.
 
 Ejecutar los tests:
 
@@ -123,7 +132,7 @@ Para probar un cambio en un móvil sin tocar los bloques que tiene guardados, `-
 ./gradlew :app:assembleRelease -Ppruebas
 ```
 
-Los tests del detector sobre fotos reales dejan en `core/build/detection/` una imagen por foto con las presas contorneadas, útil para revisar a ojo cualquier cambio en la detección. Los de calidad comparan con presas anotadas a mano, antes y después del modelo de segmentación, que se ejecuta también en el PC; sus imágenes quedan en `core/build/quality/`.
+Los tests del detector sobre fotos reales dejan en `core/build/detection/` una imagen por foto con las presas contorneadas, útil para revisar a ojo cualquier cambio en la detección. Los de calidad comparan con presas anotadas a mano lo que encuentra el detector por color, antes y después del modelo de segmentación, y lo que encuentra el modelo de detección; los modelos se ejecutan también en el PC. Sus imágenes quedan en `core/build/quality/`. Tres de las nueve fotos se miden aparte y no se usan para ajustar el detector, para saber cómo responde en una pared que no ha visto.
 
 ## Publicar una versión
 
@@ -140,7 +149,7 @@ El flujo `CI` ejecuta los mismos tests y lint en cada cambio de `main` y en cada
 
 ## Tecnología
 
-Kotlin, Jetpack Compose (Material 3), Room, Navigation Compose, MapLibre para el mapa y ONNX Runtime para el modelo de segmentación. Tests con `kotlin.test` en `core` y Robolectric para la base de datos, la copia de seguridad y la búsqueda de rocódromos.
+Kotlin, Jetpack Compose (Material 3), Room, Navigation Compose, MapLibre para el mapa y ONNX Runtime para los modelos. Tests con `kotlin.test` en `core` y Robolectric para la base de datos, la copia de seguridad y la búsqueda de rocódromos.
 
 ## Estado y planes
 
@@ -148,12 +157,15 @@ Proyecto personal en desarrollo; la versión estable es la de la [última releas
 
 ## Licencia
 
-El código de este repositorio se publica bajo la [licencia MIT](LICENSE).
+El código de este repositorio se publica bajo la licencia [PolyForm Noncommercial 1.0.0](LICENSE): se puede usar, estudiar, modificar y compartir para fines no comerciales. Cualquier uso comercial, como publicar la app con anuncios o venderla, necesita permiso del autor.
+
+Lo publicado antes de este cambio, hasta la versión 2.4.0 incluida, salió bajo la licencia MIT, que sigue valiendo para ese código.
 
 Usa piezas de terceros, cada una con su propia licencia:
 
 - **MobileSAM**, el modelo de segmentación que descarga la compilación: Apache-2.0.
-- **ONNX Runtime**, que lo ejecuta en el móvil: MIT.
+- **YOLOX**, la arquitectura del modelo de detección: Apache-2.0. El modelo lo entrenó el autor a partir de los pesos publicados por YOLOX, con el conjunto de fotos [climbing](https://universe.roboflow.com/spraywall-id/climbing-rv6vd) de Roboflow Universe, que figura allí como de dominio público.
+- **ONNX Runtime**, que los ejecuta en el móvil: MIT.
 - **MapLibre Native**, el visor del mapa: BSD de 2 cláusulas.
 - **OpenFreeMap** sirve el mapa y **OpenMapTiles** define su formato y los estilos de los que parte (BSD de 3 cláusulas el código, CC-BY 4.0 el diseño).
 - **OpenStreetMap**: los datos del mapa y de las búsquedas son © los colaboradores de OpenStreetMap, bajo ODbL.

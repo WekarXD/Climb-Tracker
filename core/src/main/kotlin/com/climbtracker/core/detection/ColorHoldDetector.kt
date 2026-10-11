@@ -1,7 +1,6 @@
 package com.climbtracker.core.detection
 
 import kotlin.math.PI
-import kotlin.math.atan2
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -13,9 +12,16 @@ data class DetectorParams(
     val smoothRadius: Int = 2,
     val backgroundScale: Int = 4,
     val backgroundRadius: Int = 12,
+    /** How many times wider than the background window the one for the surroundings is. */
+    val surroundingsScale: Int = 3,
     val chromaThreshold: Float = 10f,
     /** Lightness difference needed for a pixel lighter than its background. */
     val lightThreshold: Float = 38f,
+    /**
+     * Lightness difference enough for a pixel next to one that passes [lightThreshold]: the side
+     * of a white hold that is in its own shade.
+     */
+    val shadedThreshold: Float = 19f,
     /** Lightness difference needed for a pixel darker than its background. */
     val darkThreshold: Float = 27f,
     val clusters: Int = 8,
@@ -85,12 +91,16 @@ class ColorHoldDetector(private val params: DetectorParams = DetectorParams()) :
         val background = Filters.upscale(Filters.median(reduced, params.backgroundRadius), w, h)
         val lab = Filters.toLab(smooth)
         val labBackground = Filters.toLab(background)
+        // The same over a window several times wider, which a large hold does not fill.
+        val surroundings = Background.surroundings(reduced, params.surroundingsScale, params.backgroundRadius, w, h)
 
         val factor = 1.5f - sensitivity.coerceIn(0f, 1f)
         val raw = Mask.foreground(
             lab, labBackground,
             params.chromaThreshold * factor, params.lightThreshold * factor, params.darkThreshold * factor,
+            surroundings,
         )
+        Mask.spreadLight(raw, lab.l, labBackground.l, surroundings.l, params.lightThreshold * factor, params.shadedThreshold * factor, w, h)
         val foreground = Mask.close(Mask.open(raw, w, h), w, h)
 
         val count = foreground.count { it }
@@ -141,20 +151,23 @@ class ColorHoldDetector(private val params: DetectorParams = DetectorParams()) :
             }
             val smallest = if (Shading.isNeutral(clusters.centers[g])) params.minArea else params.minChromaticArea
             if (c.area < smallest * scale * scale || c.area > maxArea) continue
-            val outline = Shading.perimeter(c, member, w, h).toFloat()
-            if (outline * outline / (4f * PI.toFloat() * c.area) > params.maxCompactness) continue
-            // Scaled with the thresholds so a faint hold found at high sensitivity is not
-            // then mistaken for a continuation of the wall around it.
-            if (Ring.continues(c, lab, params.ringDistance * factor, params.ringFraction, scale)) continue
             // Two holds of one colour that touch come out as one region, joined by a neck. Not
             // tried on what has no colour: a grey hold and its shadow look just the same.
             val coloured = params.splitNecks && !Shading.isNeutral(clusters.centers[g])
             val bodies = if (coloured) Necks.split(c, w, params.neckRadius * scale, params.neckWidth) else listOf(c)
-            for (body in bodies) holds += buildHold(body, lab, member, g)
-            for (p in c.pixels) found[p] = true
+            // Each hold is judged by itself: several joined have the outline of none of them.
+            for (body in bodies) {
+                val outline = Shading.perimeter(body, member, w, h).toFloat()
+                if (outline * outline / (4f * PI.toFloat() * body.area) > params.maxCompactness) continue
+                // Scaled with the thresholds so a faint hold found at high sensitivity is not
+                // then mistaken for a continuation of the wall around it.
+                if (Ring.continues(body, lab, params.ringDistance * factor, params.ringFraction, scale)) continue
+                holds += buildHold(body, lab, member, g)
+                for (p in body.pixels) found[p] = true
+            }
         }
         val kept = Clutter.remove(holds, w, h, params.dropNested, params.dropRuns)
-        if (!params.outlines) return regroup(kept)
+        if (!params.outlines) return Palette.regroup(kept)
 
         // Second pass, for what has the colour of the wall and so was not foreground at all.
         var taken = found
@@ -175,7 +188,7 @@ class ColorHoldDetector(private val params: DetectorParams = DetectorParams()) :
             }
             result += hold
         }
-        return regroup(result)
+        return Palette.regroup(result)
     }
 
     override fun growRegion(image: PixelImage, x: Int, y: Int): DetectedHold? {
@@ -308,73 +321,6 @@ class ColorHoldDetector(private val params: DetectorParams = DetectorParams()) :
             argb = ColorSpace.toArgb(Lab(sl / count, sa / count, sb / count)),
             colorGroup = group,
             area = o.area.toInt(),
-        )
-    }
-
-    /**
-     * Builds the palette. Colour clusters of the same hue become one group, so a route whose
-     * holds look lighter in the open and darker in the shade is still a single colour. Black,
-     * grey and white have no hue and stay apart. Groups are numbered by hue.
-     */
-    private fun regroup(holds: List<DetectedHold>): DetectionResult {
-        if (holds.isEmpty()) return EMPTY
-        class Acc {
-            var l = 0f
-            var a = 0f
-            var b = 0f
-            var area = 0
-            var count = 0
-            fun mean() = floatArrayOf(l / area, a / area, b / area)
-        }
-        val raw = LinkedHashMap<Int, Acc>()
-        for (hold in holds) {
-            val acc = raw.getOrPut(hold.colorGroup) { Acc() }
-            val lab = ColorSpace.toLab(hold.argb)
-            acc.l += lab.l * hold.area
-            acc.a += lab.a * hold.area
-            acc.b += lab.b * hold.area
-            acc.area += hold.area
-            acc.count++
-        }
-
-        // Each cluster joins the first earlier one of its hue.
-        val keys = raw.keys.toList()
-        val family = HashMap<Int, Int>()
-        for (i in keys.indices) {
-            val mine = raw.getValue(keys[i]).mean()
-            var head = keys[i]
-            if (!Shading.isNeutral(mine)) {
-                for (j in 0 until i) {
-                    if (family.getValue(keys[j]) != keys[j]) continue
-                    val other = raw.getValue(keys[j]).mean()
-                    if (!Shading.isNeutral(other) && Shading.sameMaterial(mine, other)) {
-                        head = keys[j]
-                        break
-                    }
-                }
-            }
-            family[keys[i]] = head
-        }
-        val merged = LinkedHashMap<Int, Acc>()
-        for (key in keys) {
-            val from = raw.getValue(key)
-            val into = merged.getOrPut(family.getValue(key)) { Acc() }
-            into.l += from.l
-            into.a += from.a
-            into.b += from.b
-            into.area += from.area
-            into.count += from.count
-        }
-
-        val ordered = merged.entries.sortedBy { atan2(it.value.b / it.value.area, it.value.a / it.value.area) }
-        val newIndex = HashMap<Int, Int>()
-        val groups = ordered.mapIndexed { i, (head, acc) ->
-            newIndex[head] = i
-            ColorGroup(i, ColorSpace.toArgb(Lab(acc.l / acc.area, acc.a / acc.area, acc.b / acc.area)), acc.count)
-        }
-        return DetectionResult(
-            holds.map { it.copy(colorGroup = newIndex.getValue(family.getValue(it.colorGroup))) },
-            groups,
         )
     }
 

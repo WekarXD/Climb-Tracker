@@ -274,4 +274,32 @@ class ColorHoldDetectorTest {
         assertEquals(2, r.holds.size)
         assertEquals(2, r.groups.size)
     }
+
+    @Test
+    fun findsHoldWiderThanTheBackgroundWindow() {
+        // 120 px across in a 640 px image, where the background is a median over 100 px.
+        val img = TestImages.solid(640, 480, TestImages.BEIGE)
+        TestImages.rect(img, 260, 180, 120, 120, TestImages.RED)
+        val r = detector.detect(img, 0.5f)
+        assertEquals(1, r.holds.size)
+        assertTrue(r.holds[0].area in 13000..14400, "area ${r.holds[0].area}")
+    }
+
+    @Test
+    fun whiteHoldOnDarkPanelIncludesItsShadedSide() {
+        val img = TestImages.solid(w, h, TestImages.DARK)
+        TestImages.rect(img, 100, 70, 20, 30, 0xFFE6E6E6.toInt())
+        TestImages.rect(img, 120, 70, 20, 30, 0xFF787878.toInt())
+        val r = detector.detect(img, 0.5f)
+        assertEquals(1, r.holds.size)
+        assertEquals(100f / w, r.holds[0].bounds.left, 0.01f)
+        assertEquals(140f / w, r.holds[0].bounds.right, 0.01f)
+    }
+
+    @Test
+    fun chalkOnDarkPanelIsStillNotAHold() {
+        val img = TestImages.solid(w, h, TestImages.DARK)
+        TestImages.rect(img, 100, 70, 40, 30, 0xFF787878.toInt())
+        assertEquals(0, detector.detect(img, 0.5f).holds.size)
+    }
 }

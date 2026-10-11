@@ -1,7 +1,6 @@
 package com.climbtracker
 
 import android.app.Application
-import com.climbtracker.core.detection.ColorHoldDetector
 import com.climbtracker.core.detection.HoldDetector
 import com.climbtracker.data.AppDatabase
 import com.climbtracker.data.Backup
@@ -33,5 +32,5 @@ class ClimbApp : Application() {
         val version = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?"
         GymSearch("ClimbTracker/$version (Android; $packageName)")
     }
-    val detector: HoldDetector by lazy { RefiningDetector(ColorHoldDetector(), SilhouetteModel(this)) }
+    val detector: HoldDetector by lazy { Models.detector(this) }
 }

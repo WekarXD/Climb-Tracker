@@ -128,11 +128,12 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
 
-// The segmentation models are too large to keep in the repository and change with each
-// retraining. They are attached to a release of the project, and fetched from there the first
-// time they are missing or when the checksums below change.
-val modelsRelease = "models-1"
+// The models are too large to keep in the repository and change with each retraining. They
+// are attached to a release of the project, and fetched from there the first time they are
+// missing or when the checksums below change.
+val modelsRelease = "models-2"
 val models = mapOf(
+    "hold_detector.onnx" to "7435cb28f9e0a3b092fd68cc8537747161f5ec4c2fc9b54bd4f7cc5011aa65bb",
     "sam_encoder.onnx" to "0f7767fafee4544e99741ce2c010927bcc2969a71e5dd19a6be5a066192c5e1a",
     "sam_decoder.onnx" to "18c8f412d45db4f27bffc3251fc5157e979d30aea9675fca916d3758d689174a",
 )
