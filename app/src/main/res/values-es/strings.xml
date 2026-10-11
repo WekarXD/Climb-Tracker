@@ -154,6 +154,8 @@
     <string name="colour_turquoise">Turquesa</string>
     <string name="colour_blue">Azul</string>
     <string name="colour_purple">Morado</string>
+    <string name="split_hold">Dividir una presa</string>
+    <string name="split_hint">Amplía si hace falta y traza una línea sobre la presa para dividirla.</string>
     <plurals name="sessions_caps">
         <item quantity="one">SESIÓN</item>
         <item quantity="many">SESIONES</item>

@@ -159,6 +159,8 @@
     <string name="colour_turquoise">Turquoise</string>
     <string name="colour_blue">Blue</string>
     <string name="colour_purple">Purple</string>
+    <string name="split_hold">Split a hold</string>
+    <string name="split_hint">Zoom in if needed, then draw a line across the hold to split it.</string>
     <plurals name="sessions_caps">
         <item quantity="one">SESSION</item>
         <item quantity="other">SESSIONS</item>

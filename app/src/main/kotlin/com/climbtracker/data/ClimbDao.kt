@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import com.climbtracker.core.editor.HoldCut
 import com.climbtracker.core.editor.SelectedHold
 import kotlinx.coroutines.flow.Flow
 
@@ -243,6 +244,40 @@ abstract class ClimbDao {
                 else -> deleteHold(hold.id)
             }
         }
+    }
+
+    @Query("SELECT * FROM holds WHERE id = :id")
+    abstract suspend fun hold(id: Long): HoldEntity?
+
+    @Query("SELECT * FROM boulder_holds WHERE holdId = :holdId")
+    abstract suspend fun circuitsWithHold(holdId: Long): List<BoulderHoldEntity>
+
+    @Query("UPDATE attempts SET lastHoldId = :newId WHERE lastHoldId = :oldId AND boulderId = :boulderId")
+    abstract suspend fun moveAttemptsOfBoulder(boulderId: Long, oldId: Long, newId: Long)
+
+    /**
+     * Replaces [hold] by two holds with the outlines [upper] and [lower], and returns their ids.
+     * Every circuit that had the hold gets both parts, and its attempts that ended on it go to
+     * the part [HoldCut] counts them on.
+     */
+    @Transaction
+    open suspend fun splitHold(hold: HoldEntity, upper: String, lower: String): Pair<Long, Long> {
+        val upperId = insertHold(hold.copy(id = 0, contour = upper))
+        val lowerId = insertHold(hold.copy(id = 0, contour = lower))
+        for (link in circuitsWithHold(hold.id)) {
+            val selected = SelectedHold(link.role, link.markOrder)
+            insertBoulderHolds(
+                listOf(
+                    BoulderHoldEntity(link.boulderId, upperId, HoldCut.inherit(selected, upper = true).role, link.markOrder),
+                    BoulderHoldEntity(link.boulderId, lowerId, HoldCut.inherit(selected, upper = false).role, link.markOrder),
+                ),
+            )
+            moveAttemptsOfBoulder(link.boulderId, hold.id, if (HoldCut.reachedUpper(link.role)) upperId else lowerId)
+        }
+        // Attempts of boulders whose circuit no longer has the hold.
+        moveAttempts(hold.id, if (HoldCut.reachedUpper(null)) upperId else lowerId)
+        deleteHold(hold.id)
+        return upperId to lowerId
     }
 
     /** Replaces every hold of a wall. The caller must make sure the wall has no boulders. */

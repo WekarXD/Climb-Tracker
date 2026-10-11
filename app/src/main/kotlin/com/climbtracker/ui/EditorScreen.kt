@@ -35,9 +35,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -97,6 +101,7 @@ import com.climbtracker.core.editor.Editor
 import com.climbtracker.core.editor.EditorHold
 import com.climbtracker.core.editor.EditorState
 import com.climbtracker.core.editor.HitTest
+import com.climbtracker.core.editor.HoldCut
 import com.climbtracker.core.editor.PaletteEntry
 import com.climbtracker.core.editor.SelectedHold
 import com.climbtracker.core.editor.Tool
@@ -234,6 +239,42 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         }
     }
 
+    /**
+     * Splits the hold that the line from ([ax], [ay]) to ([bx], [by]) cuts in two, both ends
+     * normalised to the image. [onDone] is told whether there was one.
+     */
+    fun cut(ax: Float, ay: Float, bx: Float, by: Float, onDone: (Boolean) -> Unit) {
+        if (busy) return
+        val a = PointF(ax, ay)
+        val b = PointF(bx, by)
+        val found = state.holds.firstNotNullOfOrNull { hold -> HoldCut.split(hold.contour, a, b)?.let { hold to it } }
+        if (found == null) {
+            onDone(false)
+            return
+        }
+        val (hold, parts) = found
+        viewModelScope.launch {
+            busy = true
+            try {
+                if (hold.id < 0) {
+                    // A manual hold not stored yet: its parts are not stored either.
+                    state = Editor.replaceHold(
+                        state, hold.id,
+                        hold.copy(id = nextManualId--, contour = parts.first), hold.copy(id = nextManualId--, contour = parts.second),
+                    )
+                } else {
+                    // Stored at once, like a new detection: other boulders on this wall use the hold too.
+                    val (upper, lower) = climb.repository.splitHold(hold.id, parts.first, parts.second) ?: return@launch
+                    state = Editor.replaceHold(state, hold.id, upper, lower)
+                    savedSelection = Editor.splitSelection(savedSelection, hold.id, upper.id, lower.id)
+                }
+                onDone(true)
+            } finally {
+                busy = false
+            }
+        }
+    }
+
     fun redetect(sensitivity: Float) {
         val image = pixels ?: return
         if (!canRedetect || busy) return
@@ -313,6 +354,8 @@ fun EditorScreen(onSaved: (Long) -> Unit, onBack: () -> Unit, vm: EditorViewMode
     var showSave by remember { mutableStateOf(false) }
     var showSensitivity by remember { mutableStateOf(false) }
     var showDiscard by remember { mutableStateOf(false) }
+    // While on, a line drawn across a hold splits it; the photo does not move.
+    var cutting by remember { mutableStateOf(false) }
     val state = vm.state
     val leave = { if (vm.hasUnsavedChanges) showDiscard = true else onBack() }
     BackHandler(enabled = vm.hasUnsavedChanges) { showDiscard = true }
@@ -341,7 +384,9 @@ fun EditorScreen(onSaved: (Long) -> Unit, onBack: () -> Unit, vm: EditorViewMode
                 vm.loading -> Spinner(Modifier.align(Alignment.Center), color = Color.White)
                 bitmap == null || wall == null ->
                     Text(stringResource(R.string.image_unavailable), color = Color.White, modifier = Modifier.align(Alignment.Center))
-                else -> EditorCanvas(bitmap, state, wall.width, vm::tap, vm::longPress)
+                else -> EditorCanvas(bitmap, state, wall.width, vm::tap, vm::longPress, cutting) { ax, ay, bx, by ->
+                    vm.cut(ax, ay, bx, by) { done -> if (done) cutting = false }
+                }
             }
             Column(Modifier.align(Alignment.TopCenter)) {
                 Row(
@@ -352,7 +397,16 @@ fun EditorScreen(onSaved: (Long) -> Unit, onBack: () -> Unit, vm: EditorViewMode
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                     Spacer(Modifier.weight(1f))
-                    if (state.canUndo && !vm.busy) {
+                    if (state.holds.isNotEmpty() && !vm.busy) {
+                        CircleButton(onClick = { cutting = !cutting }) {
+                            Icon(
+                                Icons.Default.ContentCut,
+                                contentDescription = stringResource(R.string.split_hold),
+                                tint = if (cutting) Terracotta else LocalContentColor.current,
+                            )
+                        }
+                    }
+                    if (state.canUndo && !vm.busy && !cutting) {
                         CircleButton(onClick = vm::undo) {
                             Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = stringResource(R.string.undo))
                         }
@@ -365,6 +419,7 @@ fun EditorScreen(onSaved: (Long) -> Unit, onBack: () -> Unit, vm: EditorViewMode
                 }
                 if (!vm.loading && vm.bitmap != null) {
                     when {
+                        cutting -> Hint(stringResource(R.string.split_hint))
                         state.holds.isEmpty() ->
                             Banner(stringResource(R.string.no_holds_found))
                         state.holds.size > MAX_HOLDS ->
@@ -486,6 +541,8 @@ private fun EditorCanvas(
     imageWidth: Int,
     onTap: (Float, Float, Float) -> Unit,
     onLongPress: (Float, Float, Float) -> Unit,
+    cutting: Boolean,
+    onCut: (Float, Float, Float, Float) -> Unit,
 ) {
     val image = remember(bitmap) { bitmap.asImageBitmap() }
     val haptics = LocalHapticFeedback.current
@@ -493,6 +550,9 @@ private fun EditorCanvas(
     val line = with(LocalDensity.current) { 1.dp.toPx() }
     val tap by rememberUpdatedState(onTap)
     val longPress by rememberUpdatedState(onLongPress)
+    val cut by rememberUpdatedState(onCut)
+    // The line being drawn to split a hold, in screen coordinates.
+    var cutLine by remember { mutableStateOf<Pair<Offset, Offset>?>(null) }
 
     var zoom by remember { mutableFloatStateOf(1f) }
     // Offset of the image's top-left corner from where it sits when fitted and not zoomed.
@@ -529,7 +589,26 @@ private fun EditorCanvas(
             Modifier
                 .fillMaxSize()
                 .clipToBounds()
-                .pointerInput(drawn, origin) {
+                .pointerInput(drawn, origin, cutting) {
+                    if (cutting) {
+                        // One finger draws the line; the photo stays where it is meanwhile.
+                        detectDragGestures(
+                            onDragStart = { point -> cutLine = point to point },
+                            onDrag = { change, drag ->
+                                change.consume()
+                                cutLine = cutLine?.let { it.first to it.second + drag }
+                            },
+                            onDragEnd = {
+                                cutLine?.let { (from, to) ->
+                                    val a = toImage(from)
+                                    val b = toImage(to)
+                                    cut(a.x, a.y, b.x, b.y)
+                                }
+                                cutLine = null
+                            },
+                            onDragCancel = { cutLine = null },
+                        )
+                    }
                     detectTransformGestures { centroid, panChange, zoomChange, _ ->
                         val newZoom = (zoom * zoomChange).coerceIn(1f, MAX_ZOOM)
                         val applied = newZoom / zoom
@@ -543,7 +622,9 @@ private fun EditorCanvas(
                         )
                     }
                 }
-                .pointerInput(drawn, origin, imageWidth) {
+                .pointerInput(drawn, origin, imageWidth, cutting) {
+                    // A tap while cutting would change the circuit by accident.
+                    if (cutting) return@pointerInput
                     detectTapGestures(
                         onTap = { point ->
                             val p = toImage(point)
@@ -569,6 +650,7 @@ private fun EditorCanvas(
                     showUnselected = true, stroke = line / zoom, area = drawn, paths = outlines,
                 )
             }
+            cutLine?.let { (from, to) -> drawLine(Color.White, from, to, strokeWidth = line * 3f, cap = StrokeCap.Round) }
         }
     }
 }
@@ -580,7 +662,8 @@ private fun ToolRow(tool: Tool, onSelect: (Tool) -> Unit) {
         containerColor = Color.Transparent,
         labelColor = Color.White,
         selectedContainerColor = Color.White,
-        selectedLabelColor = Ink,
+        // Dark whatever the theme: the panel is always black and the selected tool always white.
+        selectedLabelColor = Color(0xFF1C1917),
     )
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 12.dp),
@@ -618,6 +701,17 @@ private fun PaletteRow(palette: List<PaletteEntry>, onToggle: (Int) -> Unit) {
             }
         }
     }
+}
+
+/** A note over the photo about what the next touch does. Touches go through it to the photo. */
+@Composable
+private fun Hint(text: String) {
+    Text(
+        text,
+        modifier = Modifier.fillMaxWidth().background(Color(0xB31A1715)).padding(horizontal = 12.dp, vertical = 6.dp),
+        color = Color.White,
+        style = MaterialTheme.typography.bodyMedium,
+    )
 }
 
 @Composable

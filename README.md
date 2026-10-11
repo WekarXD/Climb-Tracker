@@ -17,6 +17,7 @@ Los datos de las capturas son de ejemplo.
 - **Detecta las presas** de una foto de la pared, en el propio dispositivo.
 - **Circuito por color**: toca un color de la paleta, o una presa, y se seleccionan todas las de ese color.
 - **Pulsación larga** para añadir o quitar una presa suelta, o para crear una donde no se detectó ninguna.
+- **Dividir una presa**: si dos presas que se tocan salen como una, el botón de las tijeras permite partirla trazando una línea con el dedo.
 - **Inicio, top y pies** marcados sobre la foto; las presas solo de pies no cuentan para el progreso.
 - **Intentos con progreso**: al registrar un intento eliges la última presa que alcanzaste. La app calcula el porcentaje completado por altura entre el inicio y el top; tocar la presa de top cuenta como encadenado.
 - **Varios bloques por foto**: una pared escaneada se reutiliza para tantos bloques como quieras, y sus presas se pueden volver a detectar con otra sensibilidad sin perder los bloques.

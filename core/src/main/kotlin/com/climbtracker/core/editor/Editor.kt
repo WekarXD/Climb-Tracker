@@ -70,6 +70,23 @@ object Editor {
         state.nextOrder + 1,
     )
 
+    /**
+     * The state once the hold [id] has been split into [upper] and [lower], which take its place
+     * in the list and in the circuit. The steps taken so far refer to the hold that is gone, so
+     * they can no longer be undone.
+     */
+    fun replaceHold(state: EditorState, id: Long, upper: EditorHold, lower: EditorHold): EditorState = state.copy(
+        holds = state.holds.flatMap { if (it.id == id) listOf(upper, lower) else listOf(it) },
+        selection = splitSelection(state.selection, id, upper.id, lower.id),
+        undoStack = emptyList(),
+    )
+
+    /** [selection] with the hold [id] replaced by its two parts, each with what it keeps of its role. */
+    fun splitSelection(selection: Map<Long, SelectedHold>, id: Long, upperId: Long, lowerId: Long): Map<Long, SelectedHold> {
+        val selected = selection[id] ?: return selection
+        return selection - id + (upperId to HoldCut.inherit(selected, upper = true)) + (lowerId to HoldCut.inherit(selected, upper = false))
+    }
+
     fun undo(state: EditorState): EditorState {
         if (state.undoStack.isEmpty()) return state
         return state.copy(selection = state.undoStack.last(), undoStack = state.undoStack.dropLast(1))

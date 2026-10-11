@@ -504,6 +504,16 @@ El paso de recorte tiene un modo «Perspectiva» en el que cada esquina se mueve
 de guardar la foto y detectar, de modo que una pared fotografiada de lado o desde abajo queda
 como vista de frente. Con el modo apagado el recorte es el rectángulo de siempre.
 
+### Dividir una presa a mano
+
+En el editor, el botón de las tijeras activa un modo en el que una línea trazada con un dedo
+parte en dos la presa que cruza (`core/editor/HoldCut.kt`); mientras está activo la foto no se
+mueve, así que se amplía antes. La división se guarda al momento en la pared, como una
+detección nueva, porque otros bloques pueden usar esa presa: cada circuito que la tenía pasa a
+tener las dos partes. El top se queda en la parte de arriba y el inicio en la de abajo; un
+intento que acababa en la presa pasa a la parte de abajo, salvo que fuera el top, para no
+contar más altura de la alcanzada. No se puede deshacer.
+
 ### Idiomas
 
 Los textos están en recursos: inglés por defecto (`res/values`) y español (`res/values-es`). Las

@@ -3,6 +3,7 @@ package com.climbtracker.data
 import com.climbtracker.core.detection.DetectedHold
 import com.climbtracker.core.detection.DetectionResult
 import com.climbtracker.core.detection.HoldMatch
+import com.climbtracker.core.detection.PointF
 import com.climbtracker.core.editor.EditorHold
 import com.climbtracker.core.editor.SelectedHold
 import com.climbtracker.core.image.ContourCodec
@@ -116,6 +117,17 @@ class ClimbRepository(
         val old = dao.holds(wallId)
         val match = HoldMatch.match(old.map { ContourCodec.decode(it.contour) }, detection.holds.map { it.contour })
         dao.replaceHoldsKeepingBoulders(wallId, fresh, old.indices.filter { match[it] >= 0 }.associate { old[it].id to match[it] })
+    }
+
+    /**
+     * Splits a stored hold into the two outlines given, the upper one first, and returns the new
+     * holds in that order; null if the hold no longer exists. The boulders that used it now use
+     * both parts.
+     */
+    suspend fun splitHold(holdId: Long, upper: List<PointF>, lower: List<PointF>): Pair<EditorHold, EditorHold>? {
+        val hold = dao.hold(holdId) ?: return null
+        val (upperId, lowerId) = dao.splitHold(hold, ContourCodec.encode(upper), ContourCodec.encode(lower))
+        return EditorHold(upperId, upper, hold.colorGroup, hold.argb) to EditorHold(lowerId, lower, hold.colorGroup, hold.argb)
     }
 
     /** Removes the manual holds of a wall that no boulder uses. Detected holds are never removed. */
