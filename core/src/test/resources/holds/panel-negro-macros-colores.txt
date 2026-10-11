@@ -1,0 +1,49 @@
+# Presas reales de la foto, anotadas a mano sobre una cuadricula.
+# Una por linea: x y tipo, con x e y en porcentaje del ancho y del alto de la foto.
+# Tipos: color, gris (gris medio), claro (gris claro o blanca), negro, volumen.
+# La precision es de uno o dos puntos; el test admite ese margen.
+3.5 18.5 claro
+47.5 19.0 color
+36.0 22.5 gris
+20.0 30.0 color
+33.5 30.8 color
+45.0 32.0 gris
+92.0 16.5 color
+68.5 27.0 color
+69.0 29.3 color
+98.8 27.0 claro
+93.5 31.8 claro
+92.0 36.3 claro
+12.5 35.0 color
+32.0 41.0 color
+26.0 44.5 color
+38.0 49.0 color
+8.5 49.3 claro
+22.0 51.0 color
+39.5 54.3 color
+33.5 57.5 claro
+17.5 60.0 color
+23.3 61.0 color
+10.5 62.5 color
+17.0 66.0 color
+23.5 64.0 color
+73.0 42.5 color
+73.5 46.0 claro
+85.0 54.0 claro
+88.5 58.0 claro
+77.5 57.5 color
+85.0 60.5 color
+52.5 62.5 color
+56.5 64.0 color
+5.2 69.3 claro
+3.5 71.0 claro
+9.0 84.5 volumen
+14.0 80.5 claro
+3.0 85.3 color
+38.3 74.6 color
+39.7 74.9 color
+42.7 79.8 color
+91.5 68.0 claro
+68.0 74.5 claro
+72.3 76.5 color
+92.0 83.0 claro

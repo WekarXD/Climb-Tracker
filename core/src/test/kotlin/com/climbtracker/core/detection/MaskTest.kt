@@ -1,6 +1,7 @@
 package com.climbtracker.core.detection
 
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -76,5 +77,54 @@ class MaskTest {
         val m = Mask.foreground(img, bg, 18f, 38f, 27f)
         assertFalse(m[0])
         assertTrue(m[1])
+    }
+
+    @Test
+    fun wallBesideLargeHoldIsNotForeground() {
+        // The nearer background has taken the colour of a large hold; the wall has not changed.
+        val img = uniform(1, 70f, 2f, 10f)
+        val near = uniform(1, 45f, 40f, 25f)
+        val around = uniform(1, 70f, 2f, 10f)
+        assertTrue(Mask.foreground(img, near, 10f, 38f, 27f)[0])
+        assertFalse(Mask.foreground(img, near, 10f, 38f, 27f, around)[0])
+    }
+
+    @Test
+    fun largeHoldIsForegroundAgainstItsSurroundings() {
+        // In the middle of a hold wider than the background window, the background is the hold.
+        val img = uniform(1, 45f, 40f, 25f)
+        val near = uniform(1, 45f, 40f, 25f)
+        val around = uniform(1, 70f, 2f, 10f)
+        assertFalse(Mask.foreground(img, near, 10f, 38f, 27f)[0])
+        assertTrue(Mask.foreground(img, near, 10f, 38f, 27f, around)[0])
+    }
+
+    @Test
+    fun paleWallBesideDarkPanelIsNotForeground() {
+        // Beige has a little more colour than the black panel that fills the wider window.
+        val img = uniform(1, 75f, 2f, 11f)
+        val around = uniform(1, 20f, 0f, 0f)
+        assertFalse(Mask.foreground(img, img, 10f, 38f, 27f, around)[0])
+    }
+
+    @Test
+    fun lightSpreadsFromTheLitSideOfAHold() {
+        // Background 30. Pixels: lit, shaded, shaded, panel, chalk as light as the shaded side.
+        val light = floatArrayOf(80f, 55f, 55f, 30f, 55f)
+        val background = FloatArray(5) { 30f }
+        val mask = booleanArrayOf(true, false, false, false, false)
+        Mask.spreadLight(mask, light, background, background, 38f, 19f, 5, 1)
+        assertContentEquals(booleanArrayOf(true, true, true, false, false), mask)
+    }
+
+    @Test
+    fun lightDoesNotSpreadOverWallLighterThanALargeHold() {
+        // The nearer background is a large dark hold; against its surroundings the wall is wall.
+        val light = floatArrayOf(90f, 60f, 60f)
+        val near = FloatArray(3) { 35f }
+        val around = FloatArray(3) { 60f }
+        val mask = booleanArrayOf(true, false, false)
+        Mask.spreadLight(mask, light, near, around, 38f, 19f, 3, 1)
+        assertContentEquals(booleanArrayOf(true, false, false), mask)
     }
 }
