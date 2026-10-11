@@ -17,11 +17,17 @@ import kotlin.test.assertTrue
  * the outline of a detected hold, or within the annotation error of it; a detected hold with no
  * annotated point is a false positive. The thresholds are a floor under the current results, to catch regressions: raise
  * them when the detector improves.
+ *
+ * Some photos are kept aside and measured apart. Change the detector looking only at the others,
+ * so that what these say is how it does on a wall it was not adjusted for.
  */
 open class DetectionQualityTest {
 
     /** What is measured, for the report and the pictures. */
     protected open val stage: String get() = "detector"
+
+    /** What finds the holds; the colour detector here. */
+    protected open fun detect(image: PixelImage): List<DetectedHold> = ColorHoldDetector().detect(image, 0.5f).holds
 
     /** Step applied to what the detector finds before measuring it; none here. */
     protected open fun refine(image: PixelImage, holds: List<DetectedHold>): List<DetectedHold> = holds
@@ -29,6 +35,8 @@ open class DetectionQualityTest {
     protected open val minColourRecall: Float get() = MIN_COLOUR_RECALL
     protected open val minTotalRecall: Float get() = MIN_TOTAL_RECALL
     protected open val maxFalsePositives: Int get() = MAX_FALSE_POSITIVES
+    protected open val minHeldOutRecall: Float get() = MIN_HELD_OUT_RECALL
+    protected open val maxHeldOutFalsePositives: Int get() = MAX_HELD_OUT_FALSE_POSITIVES
 
     private class Truth(val x: Float, val y: Float, val kind: String)
 
@@ -67,7 +75,7 @@ open class DetectionQualityTest {
     private fun score(photo: String): Score {
         val truth = truth(photo)
         val image = pixels(photo)
-        val holds = refine(image, ColorHoldDetector().detect(image, 0.5f).holds)
+        val holds = refine(image, detect(image))
             .mapIndexed { i, hold -> EditorHold(i.toLong(), hold.contour, hold.colorGroup, hold.argb) }
         // Each annotated point is assigned to the hold whose outline contains it, or lies within
         // the annotation error of it: the same rule the editor uses for a finger.
@@ -97,33 +105,55 @@ open class DetectionQualityTest {
             }
             g.dispose()
             File("build/quality/$stage").mkdirs()
-            ImageIO.write(out.getSubimage(0, 0, image.width, (image.height * 0.72).toInt()), "png", File("build/quality/$stage/$photo.png"))
+            ImageIO.write(out, "png", File("build/quality/$stage/$photo.png"))
         }
         return Score(photo, truth, found, holds.size, holds.count { it.id !in hits }, hits.values.count { it > 1 })
     }
 
-    private val photos = listOf(
+    /** Photos the detector was adjusted with. */
+    private val tuning = listOf(
         "pared-volumen-negro-amarillas",
         "pared-panel-negro-turquesas",
         "pared-triangulos-varios-colores",
+        "pared-presas-rojas-grandes",
+        "panel-negro-presas-blancas",
+        "pared-macros-amarillas-azul",
+    )
+
+    /** Photos kept aside: nothing in the detector was adjusted while looking at them. */
+    private val heldOut = listOf(
+        "panel-negro-macros-colores",
+        "pared-triangulos-negros-rojas",
+        "pared-apaisada-cubos-rojos",
     )
 
     // Measured once for all the tests of a class: with the model each photo takes seconds.
-    private val scores: List<Score> get() = measured.getOrPut(stage) { photos.map { score(it) } }
+    private val scores: List<Score> get() = measured.getOrPut(stage) { tuning.map { score(it) } }
+    private val heldOutScores: List<Score> get() = measured.getOrPut("$stage/held out") { heldOut.map { score(it) } }
 
     private fun percent(value: Float) = "${(value * 100).roundToInt()}%".padStart(4)
 
     @Test
     fun report() {
         println("QUALITY $stage: photo | holds found | by kind (color gris claro negro volumen) | detected | false positives | boxes with several holds")
-        for (s in scores) {
-            val kinds = listOf("color", "gris", "claro", "negro", "volumen").joinToString(" ") { percent(s.recall(it)) }
-            println("QUALITY $stage: ${s.photo}: ${s.found.size}/${s.truth.size} ${percent(s.recall())} | $kinds | ${s.detected} | ${s.falsePositives} | ${s.merged}")
+        for ((name, set) in listOf("total" to scores, "held out" to heldOutScores)) {
+            for (s in set) {
+                val kinds = kinds.joinToString(" ") { percent(s.recall(it)) }
+                println("QUALITY $stage: ${s.photo}: ${s.found.size}/${s.truth.size} ${percent(s.recall())} | $kinds | ${s.detected} | ${s.falsePositives} | ${s.merged}")
+            }
+            val byKind = kinds.joinToString(" ") { kind ->
+                val wanted = set.flatMap { s -> s.truth.filter { it.kind == kind }.map { it in s.found } }
+                "${wanted.count { it }}/${wanted.size}"
+            }
+            println("QUALITY $stage: $name: ${found(set)}/${holds(set)} ${percent(recall(set))} | $byKind | false positives ${set.sumOf { it.falsePositives }} of ${set.sumOf { it.detected }} detected")
         }
-        val all = scores.flatMap { it.truth }.size
-        val found = scores.sumOf { it.found.size }
-        println("QUALITY $stage: total: $found/$all ${percent(found.toFloat() / all)} | false positives ${scores.sumOf { it.falsePositives }} of ${scores.sumOf { it.detected }} detected")
     }
+
+    private val kinds = listOf("color", "gris", "claro", "negro", "volumen")
+
+    private fun holds(set: List<Score>) = set.sumOf { it.truth.size }
+    private fun found(set: List<Score>) = set.sumOf { it.found.size }
+    private fun recall(set: List<Score>) = found(set).toFloat() / holds(set)
 
     @Test
     fun colouredHoldsAreMostlyFound() {
@@ -132,9 +162,7 @@ open class DetectionQualityTest {
 
     @Test
     fun overallRecallDoesNotDrop() {
-        val all = scores.flatMap { it.truth }.size
-        val found = scores.sumOf { it.found.size }
-        assertTrue(found.toFloat() / all >= minTotalRecall, "total recall ${found.toFloat() / all}")
+        assertTrue(recall(scores) >= minTotalRecall, "total recall ${recall(scores)}")
     }
 
     @Test
@@ -143,15 +171,25 @@ open class DetectionQualityTest {
         assertTrue(falsePositives <= maxFalsePositives, "false positives: $falsePositives")
     }
 
+    @Test
+    fun heldOutPhotosDoNotGetWorse() {
+        assertTrue(recall(heldOutScores) >= minHeldOutRecall, "held out recall ${recall(heldOutScores)}")
+        val falsePositives = heldOutScores.sumOf { it.falsePositives }
+        assertTrue(falsePositives <= maxHeldOutFalsePositives, "held out false positives: $falsePositives")
+    }
+
     private companion object {
         val measured = HashMap<String, List<Score>>()
 
         /** Long side of the image handed to the detector, as the app does. */
         const val SIDE = 1280
 
-        // Floors and ceiling set just under and over the measured results.
+        // Floors and ceilings set just under and over the measured results: 193 of 230 holds
+        // and 59 false positives on the photos used for adjusting, 91 of 108 and 26 on the rest.
         const val MIN_COLOUR_RECALL = 0.80f
-        const val MIN_TOTAL_RECALL = 0.87f
-        const val MAX_FALSE_POSITIVES = 28
+        const val MIN_TOTAL_RECALL = 0.82f
+        const val MAX_FALSE_POSITIVES = 61
+        const val MIN_HELD_OUT_RECALL = 0.82f
+        const val MAX_HELD_OUT_FALSE_POSITIVES = 28
     }
 }

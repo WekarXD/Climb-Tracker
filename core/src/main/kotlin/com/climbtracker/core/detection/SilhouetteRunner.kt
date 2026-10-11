@@ -4,9 +4,7 @@ import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import java.nio.FloatBuffer
-import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.roundToInt
 
 /**
  * Runs the segmentation model (MobileSAM) that draws the outline of holds. The model is told
@@ -85,40 +83,6 @@ class SilhouetteRunner(
          * Red, green and blue planes of the model's frame, with [image] scaled into its top left
          * corner; what the photo does not fill stays at zero.
          */
-        fun frame(image: PixelImage): FloatArray {
-            val frame = Silhouettes.FRAME
-            val scale = frame / max(image.width, image.height).toFloat()
-            val width = (image.width * scale).roundToInt().coerceIn(1, frame)
-            val height = (image.height * scale).roundToInt().coerceIn(1, frame)
-            val plane = frame * frame
-            val data = FloatArray(3 * plane)
-            val stepX = image.width / width.toFloat()
-            val stepY = image.height / height.toFloat()
-            for (y in 0 until height) {
-                // Each pixel of the frame is the blend of the four of the photo around its centre.
-                val sy = ((y + 0.5f) * stepY - 0.5f).coerceIn(0f, image.height - 1f)
-                val ya = sy.toInt()
-                val yb = min(ya + 1, image.height - 1)
-                val fy = sy - ya
-                for (x in 0 until width) {
-                    val sx = ((x + 0.5f) * stepX - 0.5f).coerceIn(0f, image.width - 1f)
-                    val xa = sx.toInt()
-                    val xb = min(xa + 1, image.width - 1)
-                    val fx = sx - xa
-                    val a = image.argb[ya * image.width + xa]
-                    val b = image.argb[ya * image.width + xb]
-                    val c = image.argb[yb * image.width + xa]
-                    val d = image.argb[yb * image.width + xb]
-                    val i = y * frame + x
-                    for (channel in 0 until 3) {
-                        val shift = 16 - 8 * channel
-                        val top = ((a shr shift) and 0xFF) * (1 - fx) + ((b shr shift) and 0xFF) * fx
-                        val bottom = ((c shr shift) and 0xFF) * (1 - fx) + ((d shr shift) and 0xFF) * fx
-                        data[channel * plane + i] = top * (1 - fy) + bottom * fy
-                    }
-                }
-            }
-            return data
-        }
+        fun frame(image: PixelImage): FloatArray = Frames.planes(image, Silhouettes.FRAME)
     }
 }
