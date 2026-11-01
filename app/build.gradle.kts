@@ -110,7 +110,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
     // Runs the segmentation model that draws the outline of the holds.
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.30.0")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.31.1")
 
     // Map view for finding gyms; it draws OpenStreetMap data served by OpenFreeMap.
     implementation("org.maplibre.gl:android-sdk:13.6.1")
