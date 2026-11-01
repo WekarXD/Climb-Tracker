@@ -7,7 +7,7 @@ kotlin {
 }
 
 // The version of the segmentation runtime; the app brings the Android build of the same one.
-val onnxRuntime = "1.30.0"
+val onnxRuntime = "1.31.1"
 
 dependencies {
     // Only its interface is needed here: whoever runs the model supplies the runtime.
